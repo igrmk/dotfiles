@@ -1,0 +1,22 @@
+alias urldecode='python3 -c "import sys, urllib.parse as U; print(U.unquote_plus(\" \".join(sys.argv[1:]) or sys.stdin.read()))"'
+alias urlencode='python3 -c "import sys, urllib.parse as U; print(U.quote_plus(\" \".join(sys.argv[1:]) or sys.stdin.read()))"'
+
+dec() { echo $((16#$1)); }
+
+totab() {
+	for ARG in "$@"
+	do
+		unexpand -t 4 "$ARG" > "$ARG.unexpanded"
+		mv "$ARG.unexpanded" "$ARG"
+	done
+}
+
+untab() {
+	for ARG in "$@"
+	do
+		expand -t 4 "$ARG" > "$ARG.expanded"
+		mv "$ARG.expanded" "$ARG"
+	done
+}
+
+extension() { echo "${1##*.}"; }

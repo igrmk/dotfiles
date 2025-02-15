@@ -1,0 +1,16 @@
+get-terminal-background-color() {
+	local oldstty result background_code=11 success=false
+	exec < /dev/tty
+	oldstty=$(stty -g)
+	stty raw -echo min 0
+	echo -en "\033]${background_code};?\033\\" > /dev/tty
+
+	if IFS=';' read -r -d "\\" color ; then
+		result=$(echo "$color" | sed 's/^.*\;//;s/[^rgb:0-9a-f/]//g')
+		success=true
+	fi
+
+	stty "$oldstty"
+	echo "$result"
+	return $success
+}

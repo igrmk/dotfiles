@@ -1,0 +1,6 @@
+alias ait=gpt_translate
+alias aii=gpt_improve
+alias h='history 1'
+alias ku='kubectl'
+alias ku-get-pods='kubectl get pods --sort-by=.metadata.creationTimestamp'
+alias ku-logs-all='kubectl logs --all-containers'

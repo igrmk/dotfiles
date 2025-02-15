@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -lt 1 ]; then
+    echo "Usage: git release <version> [message]"
+    exit 1
+fi
+
+version="$1"
+msg=${2:-"Release $version"}
+git tag -a "$version" -m "$msg"
+echo "Created annotated tag $version with message: $msg"

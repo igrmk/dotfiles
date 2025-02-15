@@ -1,0 +1,11 @@
+alias updatedb='sudo /usr/libexec/locate.updatedb'
+alias putclip=pbcopy
+alias getclip=pbpaste
+
+function open { command open "${1-.}"; }
+jj() { _zoxide_result="$(zoxide query --list | fzf --no-sort)" && cd "$_zoxide_result" || return; }
+gimp() { open /Applications/GIMP.app --args "$(realpath "$1")"; }
+free() { vm_stat | perl -ne '
+	/page size of (\d+)/ and $size=$1;
+	/Pages\s+([^:]+)[^\d]+(\d+)/ and printf("%-25s % 16.2f Mi\n", "$1:", $2 * $size / 1048576);'
+}

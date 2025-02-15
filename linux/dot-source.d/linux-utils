@@ -1,0 +1,10 @@
+alias list-default-packages='curl -s https://releases.ubuntu.com/22.10/ubuntu-22.10-desktop-amd64.manifest | sed "s^[\t:].*^^" | sort'
+alias list-installed-packages='apt list --installed | cut -d/ -f1 | sort'
+alias putclip='xclip -selection c'
+alias getclip='xclip -selection clipboard -o'
+alias memused="free | grep Mem | awk '{print \$3/\$2 * 100.0}'"
+alias which-display-server='echo $XDG_SESSION_TYPE'
+alias beep='play -V0 -n synth 0.5 sine 880 vol 0.5 2> /dev/null'
+
+function open { xdg-open "${@-.}"; }
+jj() { _zoxide_result="$(zoxide query --list | fzf --no-sort)" && cd "$_zoxide_result" || return; }

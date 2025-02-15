@@ -1,0 +1,111 @@
+# Uncomment to profile the loading of .zshrc
+# zmodload zsh/zprof
+
+export ZPLUG_HOME="$HOME/.zplug"
+
+for file in ~/.source.d/*; do
+	[[ -f "$file" && -r "$file" ]] && source "$file"
+done
+
+zplug romkatv/powerlevel10k, as:theme, depth:1
+zplug igrmk/cavez
+
+if ! zplug check --verbose; then
+	printf "Install? [y/N]: "
+	if read -q; then
+		echo; zplug install
+	fi
+fi
+
+zplug load
+
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Initialization code that may require console input (password prompts, [y/n]
+# confirmations, etc.) must go above this block; everything else may go below.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+	source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+export ZSH_THEME="powerlevel10k/powerlevel10k"
+export CASE_SENSITIVE="true"
+export HYPHEN_INSENSITIVE="false"
+export BRIGHT=$(cat ~/.bright)
+export PAGER='less -SFX'
+
+# The export below is for reference; it actually coincides with the default:
+# https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html
+export MAMBA_ROOT_PREFIX="$HOME/micromamba"
+
+export CAVEZ_CONDA_FLAVOUR=micromamba
+export CAVEZ_VERBOSE="false"
+export DISABLE_MAGIC_FUNCTIONS="false"
+export DISABLE_LS_COLORS="false"
+export DISABLE_AUTO_TITLE="false"
+export ENABLE_CORRECTION="false"
+export COMPLETION_WAITING_DOTS="false"
+export DISABLE_UNTRACKED_FILES_DIRTY="false"
+export HIST_STAMPS="yyyy-mm-dd"
+export HISTSIZE=50000
+export SAVEHIST=50000
+export HOMEBREW_AUTO_UPDATE_SECS=86400
+export CLOUDSDK_PYTHON=python3.12
+export DFT_BACKGROUND=light
+
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/go/bin:$PATH"
+
+zstyle ':omz:update' mode auto
+zstyle ':omz:update' frequency 13
+zstyle ':chpwd:*' recent-dirs-max 100
+zstyle ':completion:*:*:cdr:*:*' menu selection
+
+zmodload zsh/complist
+bindkey -M menuselect 'h' vi-backward-char
+bindkey -M menuselect 'k' vi-up-line-or-history
+bindkey -M menuselect 'l' vi-forward-char
+bindkey -M menuselect 'j' vi-down-line-or-history
+_comp_options+=(globdots)
+autoload -U compinit; compinit
+export EDITOR='vim'
+
+eval "$(zoxide init zsh)"
+eval "$(micromamba shell hook --shell=zsh)"
+
+autoload -U up-line-or-beginning-search
+autoload -U down-line-or-beginning-search
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+bindkey -v
+bindkey '^k' up-line-or-beginning-search
+bindkey '^j' down-line-or-beginning-search
+bindkey -M vicmd 'k' up-line-or-beginning-search
+bindkey -M vicmd 'j' down-line-or-beginning-search
+bindkey -M viins '^?' backward-delete-char
+export KEYTIMEOUT=1
+
+if [ -f "$HOME/google-cloud-sdk/path.zsh.inc" ]; then . "$HOME/google-cloud-sdk/path.zsh.inc"; fi
+if [ -f "$HOME/google-cloud-sdk/completion.zsh.inc" ]; then . "$HOME/google-cloud-sdk/completion.zsh.inc"; fi
+
+[[ -f ~/.fzf.zsh ]] && . ~/.fzf.zsh
+
+autoload -Uz chpwd_recent_dirs cdr add-zsh-hook
+add-zsh-hook chpwd chpwd_recent_dirs
+# TODO: uncomment it when these mother fuckers make it fast again
+# eval "$(gh copilot alias -- zsh)"
+
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+setopt AUTO_PUSHD
+setopt PUSHD_IGNORE_DUPS
+setopt PUSHD_SILENT
+setopt APPEND_HISTORY
+setopt SHARE_HISTORY
+setopt HIST_IGNORE_SPACE
+
+if command -v fnm >/dev/null 2>&1; then
+	eval "$(fnm env --use-on-cd --shell zsh)"
+fi
+
+# Uncomment to profile the loading of .zshrc
+# zprof

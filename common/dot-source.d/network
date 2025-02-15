@@ -1,0 +1,35 @@
+alias pubip='dig +short @1.1 -4 ch txt whoami.cloudflare | tr -d \"'
+alias pubip-tor='http_proxy=socks5://localhost:9050 curl icanhazip.com'
+alias pubip-curl='curl icanhazip.com'
+alias pubcountry='geoiplookup $(pubip)'
+alias pubcountry-tor='geoiplookup $(pubip-tor)'
+alias ipinfo='curl -s ipinfo.io'
+
+alias curltime='curl -sw "
+   time_namelookup:  %{time_namelookup}
+      time_connect:  %{time_connect}
+   time_appconnect:  %{time_appconnect}
+  time_pretransfer:  %{time_pretransfer}
+     time_redirect:  %{time_redirect}
+time_starttransfer:  %{time_starttransfer}
+                     ---
+        time_total:  %{time_total}
+" -o /dev/null'
+
+alias ssh='TERM=xterm-256color ssh'
+alias mitmweb='mitmweb --ssl-insecure --no-web-open-browser'
+alias ports='netstat -an | grep LISTEN'
+
+cert-dates() {
+	newline=0
+	result=0
+	for site in "$@"; do
+		[[ "$newline" -ne 0 ]] && echo || newline=1
+		echo "$site"
+		certificate=$(echo | openssl s_client -showcerts -servername "$site" -connect "$site:443" 2>/dev/null) || { echo query failed; result=1; continue; }
+		openssl x509 -inform pem -noout -dates <<< "$certificate"
+	done
+	return $result
+}
+
+god() { dog "$@" A AAAA CNAME MX NS PTR SOA SRV TXT; }

@@ -1,0 +1,1 @@
+alias bluetooth-params='grep ".*" /sys/module/ath9k/parameters/*'

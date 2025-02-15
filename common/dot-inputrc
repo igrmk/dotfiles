@@ -1,0 +1,6 @@
+set editing-mode vi
+set bell-style visible
+set keymap vi-insert
+Control-k: history-search-backward
+Control-j: history-search-forward
+Control-.: yank-last-arg

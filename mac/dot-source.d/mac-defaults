@@ -1,0 +1,3 @@
+alias ls='gls --color -h --hyperlink=auto'
+alias l='gls --color -lAh --hyperlink=auto'
+alias date=gdate

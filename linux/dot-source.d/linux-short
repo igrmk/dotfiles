@@ -1,0 +1,2 @@
+alias topm='top -o %MEM'
+alias m='atop -pM -l1'

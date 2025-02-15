@@ -1,0 +1,3 @@
+alias dns-clean='systemd-resolve --flush-caches'
+alias dns-clean='sudo killall -HUP dnsmasq'
+alias dnscrypt-restart='service dnscrypt-proxy restart'

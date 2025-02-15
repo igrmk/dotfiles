@@ -1,0 +1,1 @@
+asprun() { ASPNETCORE_ENVIRONMENT="$1" dotnet run --no-launch-profile -- "${@:2}"; }

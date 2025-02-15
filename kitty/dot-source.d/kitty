@@ -1,0 +1,88 @@
+alias hg='kitty +kitten hyperlinked_grep'
+alias icat='kitty +kitten icat'
+
+sun() { kitty +kitten themes --reload-in=all Garlic Sun; export BRIGHT=high; echo high > ~/.bright; }
+moon() { kitty +kitten themes --reload-in=all Garlic Moon; export BRIGHT=low; echo low > ~/.bright; }
+
+pdfcat() {
+	output="$(mktemp -d)"
+	pdftoppm -scale-to-x 2200 -scale-to-y -1 -png - "$output/pdf" < "$1"
+	while IFS= read -r -d '' file
+	do
+		kitty +kitten icat --stdin yes < "$file"
+	done < <(find -s "$output" -type f -name "pdf*.png" -print0)
+}
+
+mdcat() {
+	read -r -d '' lua_filter <<- 'EOF'
+		local function RawText (t)
+			return pandoc.RawBlock('tex', t)
+		end
+
+		function Meta (m)
+			m['header-includes'] = {RawText '\\usepackage{tcolorbox}'}
+			return m
+		end
+
+		function CodeBlock (cb)
+			return {RawText '\\begin{tcolorbox}', cb, RawText '\\end{tcolorbox}'}
+		end
+	EOF
+
+	params=(
+		--from=markdown
+		--to=pdf
+		--pdf-engine=tectonic
+		-F mermaid-filter
+		-V 'colorlinks:true'
+		-V 'mainfont:Inter'
+		-V 'pagestyle:empty'
+		-V 'monofont:JetBrains Mono NL'
+		-V 'linestretch:1.3'
+		-V 'geometry:margin=2cm'
+	)
+	
+	output="$(mktemp -d)"
+	pandoc "${params[@]}" "$1" --lua-filter=<(printf "%s" "$lua_filter") -o - 2>/dev/null | pdftoppm -scale-to-x 2200 -scale-to-y -1 -png - "$output/pdf"
+	while IFS= read -r -d '' file
+	do
+		kitty +kitten icat --stdin yes < "$file"
+	done < <(find "$output" -type f -name "pdf*.png" -print0 | sort -z)
+}
+
+gfmcat() {
+	read -r -d '' lua_filter <<- 'EOF'
+		local function RawText (t)
+			return pandoc.RawBlock('tex', t)
+		end
+
+		function Meta (m)
+			m['header-includes'] = {RawText '\\usepackage{tcolorbox}'}
+			return m
+		end
+
+		function CodeBlock (cb)
+			return {RawText '\\begin{tcolorbox}', cb, RawText '\\end{tcolorbox}'}
+		end
+	EOF
+
+	params=(
+		--from=gfm
+		--to=pdf
+		--pdf-engine=tectonic
+		-F mermaid-filter
+		-V 'colorlinks:true'
+		-V 'mainfont:Inter'
+		-V 'pagestyle:empty'
+		-V 'monofont:JetBrains Mono NL'
+		-V 'linestretch:1.3'
+		-V 'geometry:margin=2cm'
+	)
+
+	output="$(mktemp -d)"
+	pandoc "${params[@]}" "$1" --lua-filter=<(printf "%s" "$lua_filter") -o - 2>/dev/null | pdftoppm -r 200 -png - "$output/pdf"
+	while IFS= read -r -d '' file
+	do
+		kitty +kitten icat --stdin yes < "$file"
+	done < <(find "$output" -type f -name "pdf*.png" -print0 | sort -z)
+}

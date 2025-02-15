@@ -1,0 +1,33 @@
+[ui]
+username = Igor Mikushkin <igor.mikushkin@gmail.com>
+
+[defaults]
+cdiff = -q
+addremove = --similarity 90
+
+[extensions]
+color =
+graphlog =
+record =
+pager =
+extdiff =
+rebase =
+hgext.bookmarks =
+
+[diff]
+git = True
+
+[extdiff]
+cmd.cdiff = colordiff
+opts.cdiff = -uprN
+
+[alias]
+blame = annotate --user --number
+df = diff
+untrack = rm -Af
+__status = status
+st = !hg __status $($HG root) $HG_ARGS
+
+[pager]
+pager = less -R -x4
+attend = cat, diff, df, glog, log, show, st

@@ -1,0 +1,90 @@
+[include]
+   path = os
+   path = local
+[core]
+   excludesfile = ignore
+   filemode = true
+   autocrlf = false
+   editor = vi
+[color]
+   diff = auto
+   status = auto
+   branch = auto
+[alias]
+   ap = add -p
+   st = status
+   st-no-designer = status -- ':!*.Designer.cs'
+   st-no-vendor = status -- ':!vendor'
+   ci = "!f() { git commit -m \"$(git rev-parse --abbrev-ref HEAD): $1\"; }; f"
+   sw = switch
+   swd = switch --detach
+   rrr = restore
+   df = diff --find-copies --patience
+   df-no-designer = diff --find-copies --patience -- ':!*.Designer.cs'
+   df-no-vendor = diff --find-copies --patience -- ':!vendor'
+   dc = diff --cached --find-copies --patience
+   dc-no-designer = diff --cached --find-copies --patience -- ':!*.Designer.cs'
+   dc-no-vendor = diff --cached --find-copies --patience -- ':!vendor'
+   lp = log -p -M --ext-diff
+   lp- = log -p -M --find-copies --patience --color-words --word-diff-regex="[[:alnum:]]+|[[:print:]\\\t]"
+   lp-no-designer = log -p -M -- ':!*.Designer.cs'
+   glog = log --graph --oneline --pretty=fuller --author-date-order
+   gloga = log --graph --oneline --pretty=fuller --author-date-order --all
+   overview = log --graph --oneline --pretty=fuller --author-date-order --all --simplify-by-decoration
+   dry = commit --dry-run -a
+   kd = !git difftool --dir-diff --tool=kdiff3
+   kdc = !git difftool --dir-diff --tool=kdiff3 --cached
+   md = !git difftool --dir-diff --tool=meld
+   mdc = !git difftool --dir-diff --tool=meld --cached
+   dt  = difftool
+   dw  = diff --find-copies --color-words --patience
+   dcw = diff --find-copies --color-words --patience --cached
+   d- = diff --find-copies --patience --color-words --word-diff-regex="[[:alnum:]]+|[[:print:]\\\t]" --no-ext-diff
+   dc- = diff --find-copies --patience --color-words --word-diff-regex="[[:alnum:]]+|[[:print:]\\\t]" --cached --no-ext-diff
+   unamend = reset --soft HEAD@{1}
+   unmerge = git reset --hard ORIG_HEAD
+   get-submodules = submodule update --init --recursive
+   squash-all = "!f(){ [ ! -z \"$1\" ] && git reset $(git commit-tree HEAD^{tree} -m \"$1\"); };f"
+   stash-unstaged = "!f() { cd ${GIT_PREFIX:-./}; git stash push --keep-index --include-untracked -- $(git ls-files --modified --others --exclude-standard); }; f"
+   bz = "!f() { cd ${GIT_PREFIX:-./}; echo -- $(git ls-files --modified --others --exclude-standard); }; f"
+   conflicts = diff --name-only --diff-filter=U
+[user]
+   name = Igor Mikushkin
+   email = igor.mikushkin@gmail.com
+[diff]
+   colorMoved = default
+   colorMovedWs = allow-indentation-change
+   tool = kdiff3
+   pager = less -SFXM +Gg
+   external = difft
+[difftool]
+   prompt = false
+[push]
+   default = current
+   autoSetupRemote = true
+   followTags = true
+[mergetool]
+   prompt = false
+   keepBackup = false
+   keepTemporaries = false
+[merge]
+   tool = kdiff3
+[log]
+   abbrevCommit = true
+   decorate = true
+   follow = true
+[color "diff"]
+   old = red reverse
+   new = green reverse
+   oldMoved = cyan reverse
+   newMoved = yellow reverse
+   whitespace = red reverse
+[init]
+   defaultBranch = main
+[tag]
+   sort = -version:refname
+[difftool "kdiff3"]
+   cmd = kdiff3 --cs FullAnalysis=1 --cs ShowLineNumbers=1 --cs SkipDirStatus=1 --cs FollowDirLinks=1 --cs FollowFileLinks=1 "$LOCAL" "$REMOTE"
+[diff "hex"]
+   textconv = hexdump -v -C
+   binary = true

@@ -1,0 +1,70 @@
+# if running bash
+
+. ~/.prlogger
+
+prlog "running .profile"
+
+. /etc/environment
+
+LANG="en_US.UTF-8"
+LC_NUMERIC="en_US.UTF-8"
+LC_TIME="en_US.UTF-8"
+LC_MONETARY="en_US.UTF-8"
+LC_PAPER="en_US.UTF-8"
+LC_NAME="en_US.UTF-8"
+LC_ADDRESS="en_US.UTF-8"
+LC_TELEPHONE="en_US.UTF-8"
+LC_MEASUREMENT="en_US.UTF-8"
+LC_IDENTIFICATION="en_US.UTF-8"
+ANDROID_EMULATOR_USE_SYSTEM_LIBS=1
+JAVA_HOME="/usr/lib/jvm/java-9-oracle"
+ANDROID_SDK_ROOT="$HOME/Android/Sdk"
+ANDROID_HOME="$ANDROID_SDK_ROOT"
+export XCURSOR_SIZE=16
+export FZF_DEFAULT_COMMAND="rg --files"
+export FZF_ALT_C_COMMAND="fd -t d . ."
+
+# use sh syntax instead of bash due to lightdm-session
+[ -n "$BASH_VERSION" ] && [ -f "$HOME/.bashrc" ] && . "$HOME/.bashrc" || prlog "refuse to load .bashrc"
+
+
+[ -d "$HOME/bin" ] &&                 PATH="$HOME/bin:$PATH"
+[ -d "$HOME/.local/bin" ] &&          PATH="$HOME/.local/bin:$PATH"
+[ -d "$HOME/bin_user" ] &&            PATH="$HOME/bin_user:$PATH"
+[ -d "$HOME/.os-specific/bin" ] &&    PATH="$HOME/.os-specific/bin:$PATH"
+[ -d "$HOME/.cabal/bin" ] &&          PATH="$HOME/.cabal/bin:$PATH"
+[ -d "$HOME/Library/Haskell/bin" ] && PATH="$HOME/Library/Haskell/bin:$PATH"
+[ -d "$HOME/perl5/bin" ] &&           PATH="$HOME/perl5/bin:$PATH"
+[ -d "$HOME/.cargo/bin" ] &&          PATH="$HOME/.cargo/bin:$PATH"
+[ -d "$HOME/.yarn/bin" ] &&           PATH="$HOME/.yarn/bin:$PATH"
+[ -d "$HOME/projects/go/bin" ] &&     PATH="$HOME/projects/go/bin:$PATH"
+[ -d "$HOME/.dotnet/tools" ] &&       PATH="$HOME/.dotnet/tools:$PATH"
+[ -d "$HOME/.npm/bin" ] &&            PATH="$HOME/.npm/bin:$PATH"
+[ -d "/usr/local/cuda-8.0/bin" ] &&   PATH="/usr/local/cuda-8.0/bin:$PATH"
+[ -d "/snap/bin" ] &&                 PATH="/snap/bin:$PATH"
+[ -d "/usr/local/go/bin" ] &&         PATH="/usr/local/go/bin:$PATH"
+[ -d "/usr/lib/dart/bin" ] &&         PATH="/usr/lib/dart/bin:$PATH"
+[ -d "$HOME/.pub-cache/bin" ] &&      PATH="$HOME/.pub-cache/bin:$PATH"
+[ -d "$HOME/projects/procto" ] &&     PATH="$HOME/projects/procto:$PATH"
+
+prlog "PATH:" $PATH
+export PATH
+
+PERL5LIB="$HOME/perl5/lib/perl5${PERL5LIB:+:${PERL5LIB}}"; export PERL5LIB;
+PERL_LOCAL_LIB_ROOT="$HOME/perl5${PERL_LOCAL_LIB_ROOT:+:${PERL_LOCAL_LIB_ROOT}}"; export PERL_LOCAL_LIB_ROOT;
+PERL_MB_OPT="--install_base \"$HOME/perl5\""; export PERL_MB_OPT;
+PERL_MM_OPT="INSTALL_BASE=$HOME/perl5"; export PERL_MM_OPT;
+
+export GOPATH=$HOME/projects/go
+export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
+
+[ -f ~/.os-specific/.profile ] && . ~/.os-specific/.profile
+[ -f ~/.profile_user ] && . ~/.profile_user
+
+# Added due to a bug https://bugs.launchpad.net/ubuntu/+source/xorg/+bug/1922414
+# eval $(ssh-agent -s)
+
+prlog "finihsing .profile"
+
+true
+

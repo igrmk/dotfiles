@@ -1,0 +1,9 @@
+rand-pass-18() {
+	result=
+	while [[ ! "$result" =~ [[:lower:]] || ! "$result" =~ [[:upper:]] || ! "$result" =~ [[:digit:]] ]]
+	do
+		result=$(LC_CTYPE=C tr -dc "[:alnum:]" < /dev/urandom | head -c18)
+	done
+	printf "%s\n" "$result"
+}
+

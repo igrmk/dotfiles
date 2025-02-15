@@ -1,0 +1,29 @@
+alias removealpha='mogrify -background white -alpha remove -alpha off'
+
+combine-pdfs() {
+	if [[ $# -lt 2 ]]; then
+		echo "usage: combine-pdfs INPUT1 [INPUT2...] OUTPUT"
+		return 1
+	fi
+	echo OUTPUT "${!#}" INPUTS "${@:1:$#-1}"
+	gs -dNOPAUSE -sDEVICE=pdfwrite -sOUTPUTFILE="${!#}" -dBATCH "${@:1:$#-1}"
+}
+
+svg_transform() {
+	selector='//_:path[1]/@d'
+	input=$(</dev/stdin)
+
+	old_path="$(xmlstarlet sel -t -v "$selector" <<< "$input")"
+	# shellcheck disable=SC2181
+	[[ $? -ne 0 ]] && echo "could not parse SVG" && return 1
+
+	new_path="$(svg_path_transform "$@" <<< "$old_path")"
+	# shellcheck disable=SC2181
+	[[ $? -ne 0 ]] && echo "could not parse path" && return 1
+
+	xmlstarlet ed -u "$selector" -v "$new_path" <<< "$input"
+	# shellcheck disable=SC2181
+	[[ $? -ne 0 ]] && echo "could not update SVG" && return 1
+	return 0
+}
+

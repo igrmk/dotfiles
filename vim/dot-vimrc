@@ -1,0 +1,302 @@
+set nocompatible
+filetype on
+filetype off
+
+let mapleader=' '
+
+set rtp+=~/.vim/bundle/Vundle.vim
+call vundle#begin()
+
+Plugin 'igrmk/kull-vim'
+
+Plugin 'google/vim-maktaba'
+Plugin 'google/vim-codefmt'
+Plugin 'google/vim-glaive'
+Plugin 'gmarik/Vundle.vim'
+Plugin 'tpope/vim-surround'
+Plugin 'tpope/vim-abolish'
+Plugin 'tpope/vim-rails'
+Plugin 'tpope/vim-scriptease'
+Plugin 'igrmk/detectindent'
+Plugin 'mileszs/ack.vim'
+Plugin 'scrooloose/nerdcommenter'
+Plugin 'SmartCase'
+Plugin 'Tabular'
+Plugin 'LogiPat'
+Plugin 'VisIncr'
+Plugin 'dominikduda/vim_current_word'
+Plugin 'fatih/vim-go'
+Plugin 'easymotion/vim-easymotion'
+Plugin 'camelcasemotion'
+Plugin 'jnurmine/Zenburn'
+Plugin 'PeterRincker/vim-argumentative'
+Plugin 's3rvac/AutoFenc'
+Plugin 'MaxMEllon/vim-jsx-pretty'
+Plugin 'OmniSharp/omnisharp-vim'
+Plugin 'dense-analysis/ale'
+Plugin 'junegunn/fzf'
+Plugin 'junegunn/fzf.vim'
+Plugin 'lambdalisue/fern.vim'
+Plugin 'lambdalisue/fern-hijack.vim'
+
+Plugin 'nelsyeung/twig.vim'
+Plugin 'lervag/vimtex'
+Plugin 'udalov/kotlin-vim'
+Plugin 'pboettch/vim-cmake-syntax'
+Plugin 'peterhoeg/vim-qml'
+Plugin 'tpope/vim-markdown'
+Plugin 'pangloss/vim-javascript'
+Plugin 'stephpy/vim-yaml'
+Plugin 'lark-parser/vim-lark-syntax'
+Plugin 'neo4j-contrib/cypher-vim-syntax'
+Plugin 'hashivim/vim-terraform'
+" Plugin 'python-mode/python-mode'
+
+call vundle#end()
+call glaive#Install()
+filetype plugin indent on
+
+runtime macros/matchit.vim
+
+set path+=**
+" set termguicolors
+set t_ut=
+set t_Co=256
+set encoding=utf-8
+set fileencodings=utf-8,cp1251,koi8-r,cp866,ucs-bom
+set hidden
+set incsearch
+set noerrorbells visualbell t_vb=
+set scrolloff=3
+set wildmenu
+set wildmode=list:longest
+set ai
+set sw=4
+set ts=4
+set et
+set ruler
+set nowrap
+set mouse=a
+set list
+set hls
+set showcmd
+set viminfo='100,<1000,s100,h
+set backspace=indent,eol,start
+set tags=./tags;/
+set laststatus=2
+set showmode
+set clipboard=unnamed,unnamedplus
+set noswapfile
+set langmap=ФИСВУАПРШОЛДЬТЩЗЙКЫЕГМЦЧНЯ;ABCDEFGHIJKLMNOPQRSTUVWXYZ,фисвуапршолдьтщзйкыегмцчня;abcdefghijklmnopqrstuvwxyz
+set nofixendofline
+set nofoldenable
+set re=2
+
+syntax enable
+
+if $BRIGHT == "high"
+  colors hull
+else
+  colors kull
+endif
+
+command Sudow w !sudo tee % >/dev/null
+command Clean %s/\s\+$//e
+
+Glaive codefmt plugin[mappings]
+nmap <leader>ll :colors kull<cr>
+nmap <leader>lh :colors hull<cr>
+nmap t /TODO<cr>
+
+map ,, :nohl<cr>
+map <f10> :echo "hi<" . synIDattr(synID(line("."),col("."),1),"name") . '> trans<' . synIDattr(synID(line("."),col("."),0),"name") . "> lo<" . synIDattr(synIDtrans(synID(line("."),col("."),1)),"name") . ">"<cr>
+nnoremap <leader>r :%s/\<<c-r><c-w>\>//g<left><left>
+xnoremap p "_dP
+nnoremap <leader>d "_d
+vnoremap <leader>d "_d
+nmap <leader>c= :Tabularize /=<cr>
+vmap <leader>c= :Tabularize /=<cr>
+nmap <leader>c: :Tabularize /:/l0r1<cr>
+vmap <leader>c: :Tabularize /:/l0r1<cr>
+nmap <leader>c, :Tabularize /,\zs/l0r1<cr>
+vmap <leader>c, :Tabularize /,\zs/l0r1<cr>
+map <leader> <plug>(easymotion-prefix)
+nnoremap <leader>l :lcl<cr>
+nmap <silent> gw "_yiw:s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/<cr><C-o>:noh<cr>
+inoremap <expr> j ((pumvisible())?("\<C-n>"):("j"))
+inoremap <expr> k ((pumvisible())?("\<C-p>"):("k"))
+nnoremap <silent> <leader>o :call Fzf_open(":Files")<cr>
+nnoremap <silent> <leader>g :call Fzf_open(":Rg")<cr>
+nmap <leader><tab> <plug>(fzf-maps-n)
+xmap <leader><tab> <plug>(fzf-maps-x)
+omap <leader><tab> <plug>(fzf-maps-o)
+imap <c-x><c-k> <plug>(fzf-complete-word)
+imap <c-x><c-f> <plug>(fzf-complete-path)
+imap <c-x><c-l> <plug>(fzf-complete-line)
+
+execute "set lcs=tab:".nr2char(187).nr2char(183)
+execute "set lcs+=trail:".nr2char(183)
+
+au VimEnter * syntax match Invisible /\r$/ conceal
+au VimEnter * call matchadd('SpecialKey', '^\s\+', -1)
+au VimEnter * call matchadd('SpecialKey', '\s\+$', -1)
+au BufRead * DetectIndent
+au BufNewFile,BufRead *.xaml setf xml
+au VimEnter *.go,*.py,*.cpp,*.c,*.cc,*.hpp,*.kt,*.java,*.cs,*.html,*.xml,*.css,*.gohtml,*.svg,*.dot,*.graphql,*.js,*.jsx let g:vim_current_word#enabled = 1
+au VimLeave * call system("xsel -ib", getreg('+'))
+au VimLeave * call system("xsel -i", getreg('+'))
+
+function! Fzf_open(cmd)
+  if winnr('$') > 1 && (!&modifiable || &ft == 'nerdtree' || &ft == 'qf' || &ft == 'fern')
+    wincmd l
+    wincmd k
+  endif
+  exe a:cmd
+endfunction
+
+augroup dotenv_settings
+  au BufNewFile,BufRead .env :set filetype=dotnev
+  au BufNewFile,BufRead *.env :set filetype=dotnev
+augroup END
+
+augroup clean_spaces
+  au!
+  au BufWritePre *.cs,*.xaml,*.js,*.php :%s/\s\+$//e
+augroup END
+
+augroup go_to_last_opened_line
+  au!
+  au BufReadPost * if line("'\"") > 1 && line("'\"") <= line("$") | exe "normal! g'\"" | endif
+augroup END
+
+augroup tex_settings
+  au!
+  au BufRead,BufNewFile *.dtx set filetype=tex
+  " This setting was for the vim-latex plugin,
+  " which I removed due to its strange behavior
+  " of adding "<++>" after parentheses.
+  " au FileType tex call TexNewMathZone("M", "align", 1)
+augroup END
+
+augroup go_settings
+  au!
+  au BufRead,BufNewFile *.gohtml set filetype=gohtmltmpl
+  au FileType go nnoremap <leader>r :GoRename<space>
+  au FileType go nnoremap <leader>u :GoReferrers<cr>
+  au FileType go :syntax sync fromstart
+  au FileType go nmap <leader>h :GoDoc<cr>
+  au FileType go map ,v :GoBuild<cr>
+augroup END
+
+augroup csharp_settings
+  au!
+  au FileType cs nmap <silent> gd :OmniSharpGotoDefinition<cr>
+  au FileType cs nnoremap <buffer> <leader>r :OmniSharpRename<cr>
+  au FileType cs nnoremap <buffer> <leader>u :OmniSharpFindUsages<cr>
+  au FileType cs nnoremap <buffer> <leader>i :OmniSharpFindImplementations<cr>
+  au FileType cs nnoremap <buffer> <leader>a :OmniSharpGetCodeActions<cr>
+  au FileType cs nnoremap <buffer> <leader><space> :OmniSharpFindSymbol<cr>
+  au FileType cs nnoremap <buffer> <leader>= :OmniSharpCodeFormat<cr>
+augroup END
+
+augroup terraform
+  au!
+  au FileType terraform nnoremap <buffer> <leader>= :TerraformFmt<cr>
+augroup END
+
+augroup json_settings
+  au!
+  au FileType json command! Pretty %!python3 -m json.tool
+  au FileType json nnoremap <buffer> <leader>= :%!python3 -m json.tool
+augroup END
+
+augroup xml_settings
+  au!
+  au FileType xml,svg,xaml command Pretty silent %!XMLLINT_INDENT="    " xmllint --encode UTF-8 --format -
+  au FileType json nnoremap <buffer> <leader>= :%!XMLLINT_INDENT="    " xmllint --encode UTF-8 --format -
+augroup END
+
+augroup yaml_settings
+  au!
+  au BufRead *.yaml command Pretty %!yq e - -I4
+  au FileType yaml nnoremap <buffer> <leader>= :%!yq e - -I4
+augroup END
+
+augroup python_settings
+  au!
+  au FileType python nnoremap <buffer> <leader>= :PymodeLintAuto<cr>
+augroup END
+
+set statusline=%<%f\ %h%m%r%=%{\"[\".(&fenc==\"\"?&enc:&fenc).((exists(\"+bomb\")\ &&\ &bomb)?\",B\":\"\").\"]\ \"}%k\ %-14.(%l,%c%V%)\ %P
+
+let g:ackprg="ack-grep -H --nocolor --nogroup --column"
+let g:vim_current_word#highlight_current_word = 0
+let g:go_fmt_command = "goimports"
+let g:go_highlight_function_arguments = 1
+let g:go_highlight_types = 1
+let g:go_addtags_skip_unexported = 1
+let g:vim_current_word#enabled = 0
+let g:tex_flavor = 'latex'
+let g:Tex_FoldedSections = ''
+let g:Tex_FoldedEnvironments = ''
+let g:Tex_FoldedMisc = ''
+let g:markdown_syntax_github = 1
+let g:go_gorename_bin = 'gopls'
+let g:ale_linters = { 'cs': ['OmniSharp'] }
+let g:ale_echo_msg_format='%linter% %severity% (%code%): %s'
+let g:ale_loclist_msg_format='%linter% %severity% (%code%): %s'
+let g:ale_sh_shell_default_shell = 'bash'
+let g:NERDDefaultAlign = 'left'
+
+" shell doesn't work well with extglob
+" lacheck gives a lot of false positives
+let g:ale_linters_ignore = { 'sh': ['shell'], 'tex': ['lacheck'] }
+let g:ale_c_build_dir_names = ['build', 'build/debug', 'build/release', 'bin']
+let g:ale_cpp_cc_options = '-std=c++23 -Wall -Wextra -Weffc++ -Wsign-conversion'
+let $FZF_DEFAULT_COMMAND = 'rg --files'
+let g:fern#disable_default_mappings = 1
+let g:fern#default_hidden = 1
+let g:fern#drawer_width = 47
+let g:fern#hide_cursor = 1
+let g:fern#default_exclude = '^\%(\.git\|bin\|obj\)$'
+let g:pymode_options_max_line_length=120
+let g:pymode_lint_cwindow=0
+" Ingore missing whitespace after ':' (false positive in f-strings)
+let g:pymode_lint_ignore = "E203"
+let g:OmniSharp_server_use_net6 = 1
+let g:vimtex_compiler_method = 'tectonic'
+
+noremap <silent> q :Fern . -drawer -reveal=%<CR><C-w>=
+
+function! FernInit() abort
+  nmap <buffer><expr> <Plug>(custom-open) fern#smart#leaf("\<Plug>(fern-action-open:select)", "\<Plug>(fern-action-expand)", "\<Plug>(fern-action-collapse)")
+  nmap <buffer> q <c-w>w
+  nmap <buffer> l <plug>(custom-open)
+  nmap <buffer> <cr> <plug>(custom-open)
+  nmap <buffer> <2-leftmouse> <plug>(custom-open)
+  nmap <buffer> cr <plug>(fern-action-new-path)
+  nmap <buffer> rm <plug>(fern-action-remove)
+  nmap <buffer> mv <plug>(fern-action-move)
+  nmap <buffer> cp <plug>(fern-action-copy)
+  nmap <buffer> cd <plug>(fern-action-cd)
+  nmap <buffer> hi <plug>(fern-action-hidden:toggle)
+  nmap <buffer> re <plug>(fern-action-reload)
+  nmap <buffer> ma <plug>(fern-action-mark-toggle)
+  nmap <buffer> sh <plug>(fern-action-open:split)
+  nmap <buffer> sv <plug>(fern-action-open:vsplit)
+  nmap <buffer><nowait> < <plug>(fern-action-leave)
+  nmap <buffer><nowait> > <plug>(fern-action-enter)
+  nmap <buffer><silent> ; :Fern . -drawer -toggle<CR><C-w>=
+endfunction
+
+augroup FernGroup
+  autocmd!
+  autocmd FileType fern call FernInit()
+augroup END
+
+let g:fern#mark_symbol                       = '●'
+let g:fern#renderer#default#collapsed_symbol = '▷ '
+let g:fern#renderer#default#expanded_symbol  = '▼ '
+let g:fern#renderer#default#leading          = ' '
+let g:fern#renderer#default#leaf_symbol      = ' '
+let g:fern#renderer#default#root_symbol      = '~ '

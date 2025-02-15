@@ -1,0 +1,4 @@
+alias btc='printf "%.0f\n" "$(curl -s https://api.binance.com/api/v1/ticker/price\?symbol=BTCUSDT | jq -r .price)"'
+alias eth='printf "%.0f\n" "$(curl -s https://api.binance.com/api/v1/ticker/price\?symbol=ETHUSDT | jq -r .price)"'
+alias btcchart='bitcoin-chart-cli --coin BTC -d 30 -w 80 -h 20'
+alias ethchart='bitcoin-chart-cli --coin ETH -d 30 -w 80 -h 20'

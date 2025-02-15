@@ -1,0 +1,11 @@
+#!/bin/bash
+
+[ -n "$STARTDBG_GUARD" ] && return || readonly STARTDBG_GUARD=1
+
+prlog ()
+{
+   echo $(date) "[$0]" "$@" >> ~/.prlog
+}
+
+prlog "sourced .prlogger"
+

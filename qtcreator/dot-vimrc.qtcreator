@@ -1,0 +1,6 @@
+nnoremap gd :tag<CR>
+nnoremap <C-o> :pop<CR>
+nnoremap <Space>r :rename<CR>
+nnoremap <Space>R :usages<CR>
+map ,, :nohl<CR>
+set clipboard+=unnamed

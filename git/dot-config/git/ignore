@@ -1,0 +1,15 @@
+*.suo
+*.sdf
+*.opensdf
+*.pro.user
+obj/
+ipch
+project.lock.json
+*.csproj.user
+.vs
+*.VC.opendb
+*.VC.db
+ignore
+?*.ignore
+?*.ignore.?*
+mermaid-filter.err

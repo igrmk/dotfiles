@@ -1,0 +1,108 @@
+. ~/.prlogger
+
+ulimit -c unlimited
+
+prlog "running .bashrc"
+
+[[ "$-" != *i* ]] && prlog "noninteractive" && return
+
+export DOTFILES_PS1_SHOW_HG_BRANCH=true
+export DOTFILES_PS1_SHOW_GIT_BRANCH=true
+export DOTFILES_PS1_SHOW_GIT_DIRTY_STATE=true
+export VIRTUAL_ENV_DISABLE_PROMPT=true
+
+export HISTCONTROL=ignoreboth
+export HISTIGNORE='[fb]g:exit:ls'
+export HISTFILESIZE=100000
+export HISTSIZE=100000
+export CLICOLOR=1
+shopt -s histappend
+shopt -s checkwinsize
+shopt -s extglob
+export PROMPT_COMMAND="history -a"
+export EDITOR='vim'
+export PAGER='less -SFX'
+export HISTTIMEFORMAT='%F %T | '
+export TIME_STYLE='long-iso'
+
+for file in ~/.source.d/*; do
+    [[ -f "$file" && -r "$file" ]] && source "$file"
+done
+
+[[ -f /etc/bash_completion ]] && ! shopt -oq posix && . /etc/bash_completion
+[[ -x /usr/bin/lesspipe ]] && eval "$(SHELL=/bin/sh lesspipe)"
+[[ -r ~/.dircolors ]] && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+
+function print_git_branch
+{
+   [[ $PWD/ = $HOME/mnt/* ]] && return
+   if [[ "$DOTFILES_PS1_SHOW_GIT_BRANCH" = "true" ]]; then
+      if [[ "$DOTFILES_PS1_SHOW_GIT_DIRTY_STATE" = "true" ]]; then
+         GIT_PS1_SHOWDIRTYSTATE=true
+         __git_ps1 "%s" 2> /dev/null
+      else
+         git rev-parse --abbrev-ref HEAD 2> /dev/null
+      fi
+   fi
+}
+
+function print_hg_branch
+{
+   [[ $PWD/ = $HOME/mnt/* ]] && return
+   if [[ "$DOTFILES_PS1_SHOW_HG_BRANCH" = "true" ]]; then
+      hg id -tbB 2> /dev/null
+   fi
+}
+
+function print_branch
+{
+   local GIT=$1
+   local HG=$2
+
+   [[ $GIT ]] && echo -n "$GIT"
+   [[ $HG ]] && echo -n "$HG"
+   [[ $GIT ]] || [[ $HG ]] && echo
+}
+
+function print_prompt
+{
+    local exit_status=$?
+    local user=$1
+    local home=$2
+    local path=$3
+    local date=$4
+    local time_=$5
+
+    local GIT=$(print_git_branch)
+    local HG=$(print_hg_branch)
+
+    local branches=$(print_branch "$GIT" "$HG")
+
+    [[ "$DOTFILES_PS1_SHOW_TITLE" = true ]] && printf "\e]0;$user@$home:$path\a"
+
+    echo
+    [[ $exit_status -ne 0 ]] && printf "\e[1;91m■ $exit_status\n"
+    printf "\e[1;37m"
+    printf "$user@$home "
+    printf "\e[0m$date $time_"
+    printf "\n"
+    printf "\e[0;33m$path"
+    [[ "$branches" ]] && printf "\e[0;32m  $branches"
+    [[ "$VIRTUAL_ENV" ]] && printf " \e[1;91m⏻ $(basename "${VIRTUAL_ENV%/.venv}")"
+    printf "\e[0m\n"
+    printf "▶ "
+}
+
+PS1="\$(print_prompt '\\u' '\\h' '\\w' '\\d' '\\t')"
+
+case "$TERM" in
+xterm*|rxvt*)
+   DOTFILES_PS1_SHOW_TITLE=true
+   ;;
+*)
+   DOTFILES_PS1_SHOW_TITLE=false
+   ;;
+esac
+
+prlog "finihsing .bashrc"
+

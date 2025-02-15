@@ -1,0 +1,14 @@
+alias diff='diff --color'
+alias cp='cp -r'
+alias scp='scp -r'
+alias rm='rm -r'
+alias mkdir='mkdir -p'
+alias less='less -R'
+alias grep='grep --color=auto'
+alias egrep='egrep --color=auto'
+alias df='df -h'
+alias du='du -h'
+alias vim=vi
+alias j=zi
+
+mysql() { command mysql "$@" --pager; }

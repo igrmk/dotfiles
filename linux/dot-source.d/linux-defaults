@@ -1,0 +1,4 @@
+alias ls='ls --color -h --hyperlink=auto'
+alias l='ls --color -lAh --hyperlink=auto'
+alias fd=fdfind
+alias stat='stat -x'

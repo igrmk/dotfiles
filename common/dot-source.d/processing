@@ -1,0 +1,21 @@
+alias nospec='sed "s/\xe2\x80\x8e//g"'
+alias tidy='tidy -i --indent-spaces 4'
+
+jpp() { python3 -mjson.tool --no-ensure-ascii "$@"; }
+jpc() { jpp "$@" | pygmentize -l javascript; }
+
+# shellcheck disable=SC2069
+jjq() { ijq "$@" 2>&1 > /dev/null; }
+
+csv() {
+	t="$(mktemp)" && sqlite3 -csv "$t" "create table t($(seq -f c%g -s, 20));" ".import \"$1\" t" 2> /dev/null && litecli -R "> " "$t"
+}
+
+hcsv() {
+	t="$(mktemp)" && sqlite3 -csv "$t" ".import \"$1\" t" 2> /dev/null && litecli -R "> " "$t"
+}
+
+ssv() {
+	t="$(mktemp)" && sqlite3 -csv "$t" "create table t($(seq -f c%g -s, 20));" ".separator ;" ".import \"$1\" t" 2> /dev/null && litecli -R "> " "$t"
+}
+

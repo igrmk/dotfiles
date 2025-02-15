@@ -1,0 +1,71 @@
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias .....='cd ../../../..'
+alias ......='cd ../../../../..'
+alias .......='cd ../../../../../..'
+alias ........='cd ../../../../../../..'
+alias -- -='cd -'
+alias date-dash='date +"%Y-%m-%d-%H-%M-%S"'
+alias date-underline='date +"%Y_%m_%d_%H_%M_%S"'
+alias cls='printf "\033c"'
+alias remcolors='sed -r "s/\x1B\[[0-9;]*[mK]//g"'
+alias catf='tail -n +1'
+alias v='file="$(fzf)" && vim "$file"'
+alias c='file="$(fzf)" && xclip -r -selection c <<< "$file" && echo "$file"'
+alias enca='enca -L russian'
+alias cal='ncal -C'
+alias googler='googler --noua'
+alias ps-cpu-and-rss-in-kb='ps -o pcpu= -o rss= -p'
+alias rgeverywhere='rg --no-ignore --hidden --follow'
+alias rgg='rg --files -g'
+alias rgs='rg --sort path'
+
+swap() { TMPFILE=$(mktemp) && [[ -f "$1" ]] && [[ -f "$2" ]] && mv "$1" "$TMPFILE" && mv "$2" "$1" && mv "$TMPFILE" "$2"; }
+
+timestamp() {
+	case "$*" in
+		'') date +"%s" ;;
+		*[!0-9]*) date --date="$*" +"%s" ;;
+		*) date -d "@$*" ;;
+	esac
+}
+
+search-up() {
+	[[ / == "$2" ]] && return
+	[[ -d "$2/$1" ]] && printf "%s\n" "$(realpath "$2/$1")" && return
+	up "$1" "$(dirname "$2")"
+}
+
+grep-ids() {
+	[[ -z "$1" ]] && { echo "Error: missing search term" >&2; return 1; }
+	rg "[A-Za-z0-9_]*$1[A-Za-z0-9_]*" "${@:2}"
+}
+
+list-ids() {
+	[[ -z "$1" ]] && { echo "Error: missing search term" >&2; return 1; }
+	ids "$@" -oNI | sort | uniq
+}
+
+grep-guids() { rg "[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}" "$@"; }
+list-guids() { guids "$@" -oN | sort | uniq; }
+
+show-color() {
+	[[ ! "$1" =~ ^[0-9A-Fa-f]{6}$ ]] && { echo "Error: invalid hex color" >&2; return 1; }
+	for _ in {1..8}
+	do
+		printf "\x1b[48;2;$(dec "${1:0:2}");$(dec "${1:2:2}");$(dec "${1:4:2}")m%16s\x1b[0m\n"
+	done
+}
+
+rr-name() {
+	[[ $# -ne 1 ]] && { echo "Usage: rr-name <pattern>" >&2; return 1; }
+	find . \( -type f -o -type d \) -name "$1" -exec rm -rf {} +
+}
+
+rr-ext() {
+	[[ $# -ne 1 ]] && { echo "Usage: rr-ext <extension>" >&2; return 1; }
+	ext="${1#.}"
+	find . \( -type f -o -type d \) -name "*.$ext" -exec rm -rf {} +
+}
+

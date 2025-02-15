@@ -1,0 +1,5 @@
+alias rand-string='cat /dev/urandom | LC_CTYPE=C tr -dc "[:lower:]"'
+alias rand-digits='cat /dev/urandom | LC_CTYPE=C tr -dc "[:digit:]"'
+alias rand-email='printf "%s@igr.mk\n" "$(rand-string | head -c8)"'
+alias rand-name='rand-string | head -c8 | sed "s/.*/\u&/"'
+alias date-email='printf "%s@igr.mk\n" "$(date +"%Y-%m-%d-%H-%M-%S")"'

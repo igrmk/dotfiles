@@ -1,0 +1,11 @@
+#!/bin/bash
+
+[ -n "$BASHLIB_GUARD" ] && return || readonly BASHLIB_GUARD=1
+
+# use sh syntax instead of bash due to lightdm-session
+append_to_path()
+{
+   [ -d "$1" ] && PATH="$1:$PATH"
+}
+
+

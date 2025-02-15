@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dirs=(
+	"$HOME/.config/git"
+	"$HOME/.local/bin"
+	"$HOME/.source.d"
+	"$HOME/.config/kitty"
+)
+
+for dir in "${dirs[@]}"; do
+	install -d -m 700 "$dir"
+done
