@@ -44,6 +44,7 @@ export DISABLE_AUTO_TITLE="false"
 export ENABLE_CORRECTION="false"
 export COMPLETION_WAITING_DOTS="false"
 export DISABLE_UNTRACKED_FILES_DIRTY="false"
+export HISTFILE="$HOME/.zsh_history"
 export HIST_STAMPS="yyyy-mm-dd"
 export HISTSIZE=50000
 export SAVEHIST=50000
@@ -69,7 +70,10 @@ autoload -U compinit; compinit
 export EDITOR='vim'
 
 eval "$(zoxide init zsh)"
-eval "$(micromamba shell hook --shell=zsh)"
+
+if command -v micromamba >/dev/null 2>&1; then
+	eval "$(micromamba shell hook --shell=zsh)"
+fi
 
 autoload -U up-line-or-beginning-search
 autoload -U down-line-or-beginning-search
