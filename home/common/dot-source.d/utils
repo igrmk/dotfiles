@@ -27,6 +27,7 @@ timestamp() {
 	case "$*" in
 		'') date +"%s" ;;
 		*[!0-9]*) date --date="$*" +"%s" ;;
+		*???????????*) date -d "@$(( $1 / 1000 ))" ;;
 		*) date -d "@$*" ;;
 	esac
 }
