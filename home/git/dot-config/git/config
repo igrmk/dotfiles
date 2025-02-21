@@ -2,7 +2,7 @@
    path = os
    path = local
 [core]
-   excludesfile = ignore
+   excludesfile = ~/.config/git/ignore
    filemode = true
    autocrlf = false
    editor = vi
