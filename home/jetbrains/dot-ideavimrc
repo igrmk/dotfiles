@@ -37,7 +37,7 @@ sethandler <c-;> a:vim
 sethandler <c-s-;> a:vim
 sethandler <c-z> a:vim
 
-set clipboard+=unnamed
+set clipboard+=unnamed,unnamedplus
 
 Plug 'preservim/nerdtree'
 Plug 'easymotion/vim-easymotion'
