@@ -6,5 +6,5 @@ alias memused="free | grep Mem | awk '{print \$3/\$2 * 100.0}'"
 alias which-display-server='echo $XDG_SESSION_TYPE'
 alias beep='play -V0 -n synth 0.5 sine 880 vol 0.5 2> /dev/null'
 
-function open { xdg-open "${@-.}"; }
+function open { xdg-open "${@:-.}"; }
 jj() { _zoxide_result="$(zoxide query --list | fzf --no-sort)" && cd "$_zoxide_result" || return; }
