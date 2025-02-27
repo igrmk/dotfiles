@@ -67,7 +67,7 @@ set fileencodings=utf-8,cp1251,koi8-r,cp866,ucs-bom
 set hidden
 set incsearch
 set noerrorbells visualbell t_vb=
-set scrolloff=3
+set scrolloff=6
 set wildmenu
 set wildmode=list:longest
 set ai

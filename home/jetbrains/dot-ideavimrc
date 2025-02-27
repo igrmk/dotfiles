@@ -1,6 +1,9 @@
 let mapleader=' '
 
 set visualbell
+set keep-english-in-normal
+set scrolloff=6
+set clipboard+=unnamed,unnamedplus
 
 sethandler <c-2> a:ide
 sethandler <c-s-2> a:ide
@@ -37,8 +40,6 @@ sethandler <c-;> a:vim
 sethandler <c-s-;> a:vim
 sethandler <c-z> a:vim
 
-set clipboard+=unnamed,unnamedplus
-
 Plug 'preservim/nerdtree'
 Plug 'easymotion/vim-easymotion'
 Plug 'tpope/vim-surround'
@@ -55,5 +56,3 @@ map <c-z> <Action>(ToggleDistractionFreeMode)
 map q <Action>(ActivateProjectToolWindow)
 map <leader>i <Action>(GotoImplementation)
 nomap <leader>$ :source ~/.ideavimrc<CR>
-
-set keep-english-in-normal
