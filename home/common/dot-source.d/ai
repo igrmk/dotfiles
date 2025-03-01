@@ -1,3 +1,5 @@
+# There is an option of sed '/^$/q' instead of cat, think about it
+
 gpt_translate() {
 	sgpt --chat translate <<-EOF
 		Provide a transcription first if the query is an English word.
