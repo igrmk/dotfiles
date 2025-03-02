@@ -9,6 +9,7 @@ Usage
 
 ```bash
 cd home
+./create-dirs
 stow common
 stow zsh
 stow git
