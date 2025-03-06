@@ -250,7 +250,11 @@ let g:NERDDefaultAlign = 'left'
 
 " shell doesn't work well with extglob
 " lacheck gives a lot of false positives
-let g:ale_linters_ignore = { 'sh': ['shell'], 'tex': ['lacheck'] }
+let g:ale_linters_ignore = {
+  \ 'sh': ['shell'],
+  \ 'tex': ['lacheck'],
+\ }
+
 let g:ale_c_build_dir_names = ['build', 'build/debug', 'build/release', 'bin']
 let g:ale_cpp_cc_options = '-std=c++23 -Wall -Wextra -Weffc++ -Wsign-conversion'
 let $FZF_DEFAULT_COMMAND = 'rg --files'
@@ -265,6 +269,7 @@ let g:pymode_lint_cwindow=0
 let g:pymode_lint_ignore = "E203"
 let g:OmniSharp_server_use_net6 = 1
 let g:vimtex_compiler_method = 'tectonic'
+let g:ale_sql_sqlfluff_options = '--dialect postgres'
 
 noremap <silent> q :Fern . -drawer -reveal=%<CR><C-w>=
 
