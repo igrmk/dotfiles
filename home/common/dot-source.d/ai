@@ -1,8 +1,9 @@
 gpt_multiline_read() {
-	local var_name=$1 input=""
+	local var_name="$1" input="" line
 	while printf "> " && IFS= read -r line; do
 		input+="$line"$'\n'
 	done
+	[[ -n "$line" ]] && input+="$line"$'\n'
 	printf "\n"
 	printf -v "$var_name" "%s" "$input"
 }
