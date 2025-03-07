@@ -269,7 +269,6 @@ let g:pymode_lint_cwindow=0
 let g:pymode_lint_ignore = "E203"
 let g:OmniSharp_server_use_net6 = 1
 let g:vimtex_compiler_method = 'tectonic'
-let g:ale_sql_sqlfluff_options = '--dialect postgres'
 
 noremap <silent> q :Fern . -drawer -reveal=%<CR><C-w>=
 
