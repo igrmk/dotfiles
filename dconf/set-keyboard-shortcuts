@@ -7,6 +7,6 @@ dconf load /org/gnome/desktop/ <<-EOF
 	[wm/keybindings]
 	activate-window-menu=@as []
 	switch-input-source=['<Alt>space']
-	switch-input-source-backward=['<Shift><Alt>space']
+	switch-input-source-backward=@as []
 EOF
 
