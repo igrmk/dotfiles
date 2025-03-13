@@ -1,0 +1,12 @@
+#/usr/bin/env bash
+
+dconf load /org/gnome/desktop/ <<-EOF
+	[input-sources]
+	xkb-options=['compose:ralt']
+
+	[wm/keybindings]
+	activate-window-menu=@as []
+	switch-input-source=['<Alt>space']
+	switch-input-source-backward=['<Shift><Alt>space']
+EOF
+
