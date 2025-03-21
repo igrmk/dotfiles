@@ -43,6 +43,7 @@ sethandler <c-z> a:vim
 Plug 'preservim/nerdtree'
 Plug 'easymotion/vim-easymotion'
 Plug 'tpope/vim-surround'
+Plug 'tpope/vim-commentary'
 
 map <leader> <plug>(easymotion-prefix)
 map <c-o> <Action>(Back)
