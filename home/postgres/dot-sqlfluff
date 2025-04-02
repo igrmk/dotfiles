@@ -1,2 +1,6 @@
 [sqlfluff]
 dialect = postgres
+max_line_length = 120
+
+# Indentation rules don't match our team's preferred style
+exclude_rules = L003
