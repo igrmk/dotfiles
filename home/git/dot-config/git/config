@@ -6,6 +6,7 @@
    filemode = true
    autocrlf = false
    editor = vi
+   abbrev = 8
 [color]
    diff = auto
    status = auto
