@@ -12,3 +12,5 @@ alias vim=vi
 alias j=zi
 
 mysql() { command mysql "$@" --pager; }
+
+export RIPGREP_CONFIG_PATH=$HOME/.ripgreprc
