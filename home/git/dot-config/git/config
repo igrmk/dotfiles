@@ -21,9 +21,11 @@
    swd = switch --detach
    rrr = restore
    df = diff --find-copies --patience
+   df-no-ext-diff = diff --find-copies --patience --no-ext-diff
    df-no-designer = diff --find-copies --patience -- ':!*.Designer.cs'
    df-no-vendor = diff --find-copies --patience -- ':!vendor'
    dc = diff --cached --find-copies --patience
+   dc-no-ext-diff = diff --cached --find-copies --patience --no-ext-diff
    dc-no-designer = diff --cached --find-copies --patience -- ':!*.Designer.cs'
    dc-no-vendor = diff --cached --find-copies --patience -- ':!vendor'
    lp = log -p -M --ext-diff
