@@ -142,9 +142,23 @@ au VimEnter * call matchadd('SpecialKey', '^\s\+', -1)
 au VimEnter * call matchadd('SpecialKey', '\s\+$', -1)
 au BufRead * DetectIndent
 au BufNewFile,BufRead *.xaml setf xml
-au VimEnter *.go,*.py,*.cpp,*.c,*.cc,*.hpp,*.kt,*.java,*.cs,*.html,*.xml,*.css,*.gohtml,*.svg,*.dot,*.graphql,*.js,*.jsx let g:vim_current_word#enabled = 1
-au VimLeave * call system("xsel -ib", getreg('+'))
-au VimLeave * call system("xsel -i", getreg('+'))
+
+augroup EnableCurrentWordHighlighting
+    autocmd!
+    autocmd VimEnter \
+        \*.go,*.py,*.cpp,*.c,*.cc,*.hpp,
+        \*.kt,*.java,*.cs,
+        \*.html,*.xml,*.css,*.gohtml,
+        \*.svg,*.dot,*.graphql,
+        \*.js,*.jsx,
+        \.vimrc
+        \ let g:vim_current_word#enabled = 1
+augroup END
+
+if has('unix') && !has('mac')
+  au VimLeave * call system("xsel -ib", getreg('+'))
+  au VimLeave * call system("xsel -i", getreg('+'))
+endif
 
 function! Fzf_open(cmd)
   if winnr('$') > 1 && (!&modifiable || &ft == 'nerdtree' || &ft == 'qf' || &ft == 'fern')
