@@ -38,6 +38,7 @@ Plugin 'junegunn/fzf'
 Plugin 'junegunn/fzf.vim'
 Plugin 'lambdalisue/fern.vim'
 Plugin 'lambdalisue/fern-hijack.vim'
+Plugin 'madox2/vim-ai'
 
 Plugin 'nelsyeung/twig.vim'
 Plugin 'lervag/vimtex'
@@ -190,7 +191,7 @@ augroup tex_settings
   au!
   au BufRead,BufNewFile *.dtx set filetype=tex
   " This setting was for the vim-latex plugin,
-  " which I removed due to its strange behavior
+  " which I disabled due to its strange behavior
   " of adding "<++>" after parentheses.
   " au FileType tex call TexNewMathZone("M", "align", 1)
 augroup END
