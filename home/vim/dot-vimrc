@@ -96,9 +96,9 @@ set re=2
 syntax enable
 
 if $BRIGHT == "high"
-  colors hull
+    colors hull
 else
-  colors kull
+    colors kull
 endif
 
 command Sudow w !sudo tee % >/dev/null
@@ -127,7 +127,7 @@ nmap <silent> gw "_yiw:s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/<cr><C-o>:noh<cr>
 inoremap <expr> j ((pumvisible())?("\<C-n>"):("j"))
 inoremap <expr> k ((pumvisible())?("\<C-p>"):("k"))
 nnoremap <silent> <leader>o :call Fzf_open(":Files")<cr>
-nnoremap <silent> <leader>g :call Fzf_open(":Rg")<cr>
+nnoremap <silent> <leader>/ :call Fzf_open(":Rg")<cr>
 nmap <leader><tab> <plug>(fzf-maps-n)
 xmap <leader><tab> <plug>(fzf-maps-x)
 omap <leader><tab> <plug>(fzf-maps-o)
@@ -160,89 +160,89 @@ augroup EnableCurrentWordHighlighting
 augroup END
 
 if has('unix') && !has('mac')
-  au VimLeave * call system("xsel -ib", getreg('+'))
-  au VimLeave * call system("xsel -i", getreg('+'))
+    au VimLeave * call system("xsel -ib", getreg('+'))
+    au VimLeave * call system("xsel -i", getreg('+'))
 endif
 
 function! Fzf_open(cmd)
-  if winnr('$') > 1 && (!&modifiable || &ft == 'nerdtree' || &ft == 'qf' || &ft == 'fern')
-    wincmd l
-    wincmd k
-  endif
-  exe a:cmd
+    if winnr('$') > 1 && (!&modifiable || &ft == 'nerdtree' || &ft == 'qf' || &ft == 'fern')
+        wincmd l
+        wincmd k
+    endif
+    exe a:cmd
 endfunction
 
 augroup dotenv_settings
-  au BufNewFile,BufRead .env :set filetype=dotnev
-  au BufNewFile,BufRead *.env :set filetype=dotnev
+    au BufNewFile,BufRead .env :set filetype=dotnev
+    au BufNewFile,BufRead *.env :set filetype=dotnev
 augroup END
 
 augroup clean_spaces
-  au!
-  au BufWritePre *.cs,*.xaml,*.js,*.php :%s/\s\+$//e
+    au!
+    au BufWritePre *.cs,*.xaml,*.js,*.php :%s/\s\+$//e
 augroup END
 
 augroup go_to_last_opened_line
-  au!
-  au BufReadPost * if line("'\"") > 1 && line("'\"") <= line("$") | exe "normal! g'\"" | endif
+    au!
+    au BufReadPost * if line("'\"") > 1 && line("'\"") <= line("$") | exe "normal! g'\"" | endif
 augroup END
 
 augroup tex_settings
-  au!
-  au BufRead,BufNewFile *.dtx set filetype=tex
-  " This setting was for the vim-latex plugin,
-  " which I disabled due to its strange behavior
-  " of adding "<++>" after parentheses.
-  " au FileType tex call TexNewMathZone("M", "align", 1)
+    au!
+    au BufRead,BufNewFile *.dtx set filetype=tex
+    " This setting was for the vim-latex plugin,
+    " which I disabled due to its strange behavior
+    " of adding "<++>" after parentheses.
+    " au FileType tex call TexNewMathZone("M", "align", 1)
 augroup END
 
 augroup go_settings
-  au!
-  au BufRead,BufNewFile *.gohtml set filetype=gohtmltmpl
-  au FileType go nnoremap <leader>r :GoRename<space>
-  au FileType go nnoremap <leader>u :GoReferrers<cr>
-  au FileType go :syntax sync fromstart
-  au FileType go nmap <leader>h :GoDoc<cr>
-  au FileType go map ,v :GoBuild<cr>
+    au!
+    au BufRead,BufNewFile *.gohtml set filetype=gohtmltmpl
+    au FileType go nnoremap <leader>r :GoRename<space>
+    au FileType go nnoremap <leader>gu :GoReferrers<cr>
+    au FileType go :syntax sync fromstart
+    au FileType go nmap <leader>gh :GoDoc<cr>
+    au FileType go map ,v :GoBuild<cr>
 augroup END
 
 augroup csharp_settings
-  au!
-  au FileType cs nmap <silent> gd :OmniSharpGotoDefinition<cr>
-  au FileType cs nnoremap <buffer> <leader>r :OmniSharpRename<cr>
-  au FileType cs nnoremap <buffer> <leader>u :OmniSharpFindUsages<cr>
-  au FileType cs nnoremap <buffer> <leader>i :OmniSharpFindImplementations<cr>
-  au FileType cs nnoremap <buffer> <leader>a :OmniSharpGetCodeActions<cr>
-  au FileType cs nnoremap <buffer> <leader><space> :OmniSharpFindSymbol<cr>
-  au FileType cs nnoremap <buffer> <leader>= :OmniSharpCodeFormat<cr>
+    au!
+    au FileType cs nmap <silent> gd :OmniSharpGotoDefinition<cr>
+    au FileType cs nnoremap <buffer> <leader>r :OmniSharpRename<cr>
+    au FileType cs nnoremap <buffer> <leader>gu :OmniSharpFindUsages<cr>
+    au FileType cs nnoremap <buffer> <leader>gi :OmniSharpFindImplementations<cr>
+    au FileType cs nnoremap <buffer> <leader>a :OmniSharpGetCodeActions<cr>
+    au FileType cs nnoremap <buffer> <leader><space> :OmniSharpFindSymbol<cr>
+    au FileType cs nnoremap <buffer> <leader>= :OmniSharpCodeFormat<cr>
 augroup END
 
 augroup terraform
-  au!
-  au FileType terraform nnoremap <buffer> <leader>= :TerraformFmt<cr>
+    au!
+    au FileType terraform nnoremap <buffer> <leader>= :TerraformFmt<cr>
 augroup END
 
 augroup json_settings
-  au!
-  au FileType json command! Pretty %!python3 -m json.tool
-  au FileType json nnoremap <buffer> <leader>= :%!python3 -m json.tool
+    au!
+    au FileType json command! Pretty %!python3 -m json.tool
+    au FileType json nnoremap <buffer> <leader>= :%!python3 -m json.tool
 augroup END
 
 augroup xml_settings
-  au!
-  au FileType xml,svg,xaml command Pretty silent %!XMLLINT_INDENT="    " xmllint --encode UTF-8 --format -
-  au FileType json nnoremap <buffer> <leader>= :%!XMLLINT_INDENT="    " xmllint --encode UTF-8 --format -
+    au!
+    au FileType xml,svg,xaml command Pretty silent %!XMLLINT_INDENT="    " xmllint --encode UTF-8 --format -
+    au FileType json nnoremap <buffer> <leader>= :%!XMLLINT_INDENT="    " xmllint --encode UTF-8 --format -
 augroup END
 
 augroup yaml_settings
-  au!
-  au BufRead *.yaml command Pretty %!yq e - -I4
-  au FileType yaml nnoremap <buffer> <leader>= :%!yq e - -I4
+    au!
+    au BufRead *.yaml command Pretty %!yq e - -I4
+    au FileType yaml nnoremap <buffer> <leader>= :%!yq e - -I4
 augroup END
 
 augroup python_settings
-  au!
-  au FileType python nnoremap <buffer> <leader>= :PymodeLintAuto<cr>
+    au!
+    au FileType python nnoremap <buffer> <leader>= :PymodeLintAuto<cr>
 augroup END
 
 set statusline=%<%f\ %h%m%r%=%{\"[\".(&fenc==\"\"?&enc:&fenc).((exists(\"+bomb\")\ &&\ &bomb)?\",B\":\"\").\"]\ \"}%k\ %-14.(%l,%c%V%)\ %P
@@ -269,8 +269,8 @@ let g:NERDDefaultAlign = 'left'
 " shell doesn't work well with extglob
 " lacheck gives a lot of false positives
 let g:ale_linters_ignore = {
-  \ 'sh': ['shell'],
-  \ 'tex': ['lacheck'],
+    \ 'sh': ['shell'],
+    \ 'tex': ['lacheck'],
 \ }
 
 let g:ale_c_build_dir_names = ['build', 'build/debug', 'build/release', 'bin']
@@ -291,29 +291,29 @@ let g:vimtex_compiler_method = 'tectonic'
 noremap <silent> q :Fern . -drawer -reveal=%<CR><C-w>=
 
 function! FernInit() abort
-  nmap <buffer><expr> <Plug>(custom-open) fern#smart#leaf("\<Plug>(fern-action-open:select)", "\<Plug>(fern-action-expand)", "\<Plug>(fern-action-collapse)")
-  nmap <buffer> q <c-w>w
-  nmap <buffer> l <plug>(custom-open)
-  nmap <buffer> <cr> <plug>(custom-open)
-  nmap <buffer> <2-leftmouse> <plug>(custom-open)
-  nmap <buffer> cr <plug>(fern-action-new-path)
-  nmap <buffer> rm <plug>(fern-action-remove)
-  nmap <buffer> mv <plug>(fern-action-move)
-  nmap <buffer> cp <plug>(fern-action-copy)
-  nmap <buffer> cd <plug>(fern-action-cd)
-  nmap <buffer> hi <plug>(fern-action-hidden:toggle)
-  nmap <buffer> re <plug>(fern-action-reload)
-  nmap <buffer> ma <plug>(fern-action-mark-toggle)
-  nmap <buffer> sh <plug>(fern-action-open:split)
-  nmap <buffer> sv <plug>(fern-action-open:vsplit)
-  nmap <buffer><nowait> < <plug>(fern-action-leave)
-  nmap <buffer><nowait> > <plug>(fern-action-enter)
-  nmap <buffer><silent> ; :Fern . -drawer -toggle<CR><C-w>=
+    nmap <buffer><expr> <Plug>(custom-open) fern#smart#leaf("\<Plug>(fern-action-open:select)", "\<Plug>(fern-action-expand)", "\<Plug>(fern-action-collapse)")
+    nmap <buffer> q <c-w>w
+    nmap <buffer> l <plug>(custom-open)
+    nmap <buffer> <cr> <plug>(custom-open)
+    nmap <buffer> <2-leftmouse> <plug>(custom-open)
+    nmap <buffer> cr <plug>(fern-action-new-path)
+    nmap <buffer> rm <plug>(fern-action-remove)
+    nmap <buffer> mv <plug>(fern-action-move)
+    nmap <buffer> cp <plug>(fern-action-copy)
+    nmap <buffer> cd <plug>(fern-action-cd)
+    nmap <buffer> hi <plug>(fern-action-hidden:toggle)
+    nmap <buffer> re <plug>(fern-action-reload)
+    nmap <buffer> ma <plug>(fern-action-mark-toggle)
+    nmap <buffer> sh <plug>(fern-action-open:split)
+    nmap <buffer> sv <plug>(fern-action-open:vsplit)
+    nmap <buffer><nowait> < <plug>(fern-action-leave)
+    nmap <buffer><nowait> > <plug>(fern-action-enter)
+    nmap <buffer><silent> ; :Fern . -drawer -toggle<CR><C-w>=
 endfunction
 
 augroup FernGroup
-  autocmd!
-  autocmd FileType fern call FernInit()
+    autocmd!
+    autocmd FileType fern call FernInit()
 augroup END
 
 let g:fern#mark_symbol                       = '●'
