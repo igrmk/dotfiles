@@ -1,11 +1,17 @@
 gpt_multiline_read() {
-	local var_name="$1" input="" line
-	while printf "> " && IFS= read -r line; do
-		input+="$line"$'\n'
-	done
-	[[ -n "$line" ]] && input+="$line"$'\n'
-	printf "\n"
-	printf -v "$var_name" "%s" "$input"
+	local var_name="$1"
+	local tmp_file content
+	tmp_file="$(mktemp)"
+
+	if [[ ${EDITOR:-vi} == *vim ]]; then
+		"$EDITOR" +startinsert "$tmp_file"
+	else
+		"$EDITOR" "$tmp_file"
+	fi
+
+	content="$(<"$tmp_file")"
+	rm -f "$tmp_file"
+	printf -v "$var_name" "%s" "$content"
 }
 
 gpt_translate() {
