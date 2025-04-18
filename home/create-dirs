@@ -7,6 +7,7 @@ dirs=(
 	"$HOME/.source.d"
 	"$HOME/.config/kitty"
 	"$HOME/.ipython/profile_default"
+	"$HOME/.vim/config"
 )
 
 for dir in "${dirs[@]}"; do

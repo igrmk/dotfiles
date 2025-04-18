@@ -1,5 +1,5 @@
-alias ait=gpt_translate
-alias aii=gpt_improve
+alias it=gpt_translate
+alias ii=gpt_improve
 alias h='history 1'
 alias ku='kubectl'
 alias ku-get-pods='kubectl get pods --sort-by=.metadata.creationTimestamp'
