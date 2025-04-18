@@ -19,7 +19,7 @@ Plugin 'tpope/vim-rails'
 Plugin 'tpope/vim-scriptease'
 Plugin 'igrmk/detectindent'
 Plugin 'mileszs/ack.vim'
-Plugin 'scrooloose/nerdcommenter'
+Plugin 'tpope/vim-commentary'
 Plugin 'SmartCase'
 Plugin 'Tabular'
 Plugin 'LogiPat'
@@ -133,6 +133,9 @@ omap <leader><tab> <plug>(fzf-maps-o)
 imap <c-x><c-k> <plug>(fzf-complete-word)
 imap <c-x><c-f> <plug>(fzf-complete-path)
 imap <c-x><c-l> <plug>(fzf-complete-line)
+" Disable Ex mode
+nnoremap Q <Nop>
+nnoremap QQ :cq<CR>
 
 execute "set lcs=tab:".nr2char(187).nr2char(183)
 execute "set lcs+=trail:".nr2char(183)
