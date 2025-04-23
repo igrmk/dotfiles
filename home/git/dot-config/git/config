@@ -31,6 +31,7 @@
    lp = log -p -M --ext-diff
    lp- = log -p -M --find-copies --patience --color-words --word-diff-regex="[[:alnum:]]+|[[:print:]\\\t]"
    lp-no-designer = log -p -M -- ':!*.Designer.cs'
+   lp-no-ext-diff = log -p -M --no-ext-diff
    glog = log --graph --oneline --pretty=fuller --author-date-order
    gloga = log --graph --oneline --pretty=fuller --author-date-order --all
    overview = log --graph --oneline --pretty=fuller --author-date-order --all --simplify-by-decoration
