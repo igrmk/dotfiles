@@ -1,4 +1,4 @@
-#/usr/bin/env bash
+#!/usr/bin/env bash
 
 dconf load /org/gnome/desktop/ <<-EOF
 	[input-sources]
