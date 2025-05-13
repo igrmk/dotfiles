@@ -47,7 +47,8 @@ Plug 'tpope/vim-commentary'
 
 map <c-o> <Action>(Back)
 map <leader>r <Action>(RenameElement)
-map <leader>gu <Action>(ShowUsages)
+map gu <Action>(ShowUsages)
+map gi <Action>(GotoImplementation)
 map <leader>= <Action>(ReformatCode)
 map <leader>- <Action>(OptimizeImports)
 map <leader>a <Action>(ShowIntentionActions)
@@ -55,7 +56,6 @@ map <leader>m <Action>(Move)
 map ,v <Action>(BuildProject)
 map <c-z> <Action>(ToggleDistractionFreeMode)
 map q <Action>(ActivateProjectToolWindow)
-map <leader>gi <Action>(GotoImplementation)
 nomap <leader>$ :source ~/.ideavimrc<CR>
 nnoremap <Leader>mm :action ToggleBookmark<CR>
 nnoremap <Leader>ml :action ShowBookmarks<CR>

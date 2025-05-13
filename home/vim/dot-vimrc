@@ -208,7 +208,8 @@ augroup go_settings
     au!
     au BufRead,BufNewFile *.gohtml set filetype=gohtmltmpl
     au FileType go nnoremap <leader>r :GoRename<space>
-    au FileType go nnoremap <leader>gu :GoReferrers<cr>
+    au FileType go nnoremap gu :GoReferrers<cr>
+    au FileType go nnoremap gi :GoImpl<cr>
     au FileType go :syntax sync fromstart
     au FileType go nmap <leader>gh :GoDoc<cr>
     au FileType go map ,v :GoBuild<cr>
@@ -218,8 +219,8 @@ augroup csharp_settings
     au!
     au FileType cs nmap <silent> gd :OmniSharpGotoDefinition<cr>
     au FileType cs nnoremap <buffer> <leader>r :OmniSharpRename<cr>
-    au FileType cs nnoremap <buffer> <leader>gu :OmniSharpFindUsages<cr>
-    au FileType cs nnoremap <buffer> <leader>gi :OmniSharpFindImplementations<cr>
+    au FileType cs nnoremap <buffer> gu :OmniSharpFindUsages<cr>
+    au FileType cs nnoremap <buffer> gi :OmniSharpFindImplementations<cr>
     au FileType cs nnoremap <buffer> <leader>a :OmniSharpGetCodeActions<cr>
     au FileType cs nnoremap <buffer> <leader><space> :OmniSharpFindSymbol<cr>
     au FileType cs nnoremap <buffer> <leader>= :OmniSharpCodeFormat<cr>
