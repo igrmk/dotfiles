@@ -45,7 +45,6 @@ Plug 'easymotion/vim-easymotion'
 Plug 'tpope/vim-surround'
 Plug 'tpope/vim-commentary'
 
-map <leader> <plug>(easymotion-prefix)
 map <c-o> <Action>(Back)
 map <leader>r <Action>(RenameElement)
 map <leader>gu <Action>(ShowUsages)
@@ -58,3 +57,8 @@ map <c-z> <Action>(ToggleDistractionFreeMode)
 map q <Action>(ActivateProjectToolWindow)
 map <leader>gi <Action>(GotoImplementation)
 nomap <leader>$ :source ~/.ideavimrc<CR>
+nnoremap <Leader>mm :action ToggleBookmark<CR>
+nnoremap <Leader>ml :action ShowBookmarks<CR>
+nmap s <plug>(easymotion-s)
+map <leader>j <plug>(easymotion-j)
+map <leader>k <plug>(easymotion-k)

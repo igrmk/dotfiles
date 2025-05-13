@@ -51,7 +51,7 @@ Plugin 'stephpy/vim-yaml'
 Plugin 'lark-parser/vim-lark-syntax'
 Plugin 'neo4j-contrib/cypher-vim-syntax'
 Plugin 'hashivim/vim-terraform'
-" Plugin 'python-mode/python-mode'
+Plugin 'python-mode/python-mode'
 
 call vundle#end()
 call glaive#Install()
@@ -121,7 +121,9 @@ nmap <leader>c: :Tabularize /:/l0r1<cr>
 vmap <leader>c: :Tabularize /:/l0r1<cr>
 nmap <leader>c, :Tabularize /,\zs/l0r1<cr>
 vmap <leader>c, :Tabularize /,\zs/l0r1<cr>
-map <leader> <plug>(easymotion-prefix)
+map s <plug>(easymotion-s)
+map <leader>j <plug>(easymotion-j)
+map <leader>k <plug>(easymotion-k)
 nnoremap <leader>l :lcl<cr>
 nmap <silent> gw "_yiw:s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/<cr><C-o>:noh<cr>
 inoremap <expr> j ((pumvisible())?("\<C-n>"):("j"))
