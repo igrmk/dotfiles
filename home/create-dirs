@@ -10,6 +10,4 @@ dirs=(
 	"$HOME/.vim/config"
 )
 
-for dir in "${dirs[@]}"; do
-	install -d -m 700 "$dir"
-done
+install -d -m 700 "${dirs[@]}"
