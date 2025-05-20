@@ -52,7 +52,7 @@
    stash-unstaged = "!f() { cd ${GIT_PREFIX:-./}; git stash push --keep-index --include-untracked -- $(git ls-files --modified --others --exclude-standard); }; f"
    bz = "!f() { cd ${GIT_PREFIX:-./}; echo -- $(git ls-files --modified --others --exclude-standard); }; f"
    conflicts = diff --name-only --diff-filter=U
-   clean-all = clean -fdx
+   force-clean-all = clean -fdx
 [user]
    name = Igor Mikushkin
    email = igor.mikushkin@gmail.com
