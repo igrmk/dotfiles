@@ -275,6 +275,7 @@ let g:ale_loclist_msg_format='%linter% %severity% (%code%): %s'
 let g:ale_sh_shell_default_shell = 'bash'
 let g:NERDDefaultAlign = 'left'
 let g:vim_ai_roles_config_file = $HOME . '/.vim/config/vim-ai-roles.ini'
+let g:pymode_rope_rename_bind = '<leader>r'
 
 " shell doesn't work well with extglob
 " lacheck gives a lot of false positives
