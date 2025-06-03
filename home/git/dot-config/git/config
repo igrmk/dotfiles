@@ -90,7 +90,13 @@
 [diff "hex"]
    textconv = hexdump -v -C
    binary = true
+
 # Must be last to override earlier settings
 [include]
    path = os
    path = local
+
+# To apply settings for e.g. your work account,
+# add this to `local`:
+# [includeIf "hasconfig:remote.*.url:git@gitlab.com:yourcompany/**"]
+#     path = yourcompany
