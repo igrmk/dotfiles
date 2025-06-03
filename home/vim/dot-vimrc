@@ -240,7 +240,7 @@ augroup END
 augroup xml_settings
     au!
     au FileType xml,svg,xaml command Pretty silent %!XMLLINT_INDENT="    " xmllint --encode UTF-8 --format -
-    au FileType json nnoremap <buffer> <leader>= :%!XMLLINT_INDENT="    " xmllint --encode UTF-8 --format -
+    au FileType xml nnoremap <buffer> <leader>= :%!XMLLINT_INDENT="    " xmllint --encode UTF-8 --format -
 augroup END
 
 augroup yaml_settings
