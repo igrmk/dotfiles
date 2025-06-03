@@ -99,4 +99,4 @@
 # To apply settings for e.g. your work account,
 # add this to `local`:
 # [includeIf "hasconfig:remote.*.url:git@gitlab.com:yourcompany/**"]
-#     path = yourcompany
+#    path = yourcompany
