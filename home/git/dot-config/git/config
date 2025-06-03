@@ -1,6 +1,3 @@
-[include]
-   path = os
-   path = local
 [core]
    excludesfile = ~/.config/git/ignore
    filemode = true
@@ -93,3 +90,7 @@
 [diff "hex"]
    textconv = hexdump -v -C
    binary = true
+# Must be last to override earlier settings
+[include]
+   path = os
+   path = local
