@@ -98,5 +98,12 @@
 
 # To apply settings for e.g. your work account,
 # add this to `local`:
-# [includeIf "hasconfig:remote.*.url:git@gitlab.com:yourcompany/**"]
-#    path = yourcompany
+# [includeIf "hasconfig:remote.*.url:git@gitlab.com:your_company/**"]
+#    path = your_company
+#
+# and this to `your_company`:
+# [core]
+#    sshCommand = ssh -i ~/.ssh/your_company_ssh_private_key
+# [user]
+#    name = John Dow
+#    email = john.dow@your_company.com
