@@ -1,28 +1,27 @@
-# Stands for intelligence + chat
+# <I>ntelligence <C>hat
 alias ic='sgpt --repl temp'
 
-read_with_editor() {
+capture_text() {
 	local var_name="$1"
-	local tmp_file
-	tmp_file="$(mktemp)"
-
-	if [[ ${EDITOR:-vim} == *vim ]]; then
-		"$EDITOR" +startinsert "$tmp_file"
-	else
-		"$EDITOR" "$tmp_file"
+	shift
+	if [[ $# -gt 0 ]]; then
+		printf -v "$var_name" '%s' "$*"
+		return
 	fi
-
+	local tmp_file editor
+	tmp_file=$(mktemp) || return
+	editor="${EDITOR:-vim}"
+	case "$editor" in
+		*vim*) "$editor" +startinsert "$tmp_file" ;;
+		*)     "$editor" "$tmp_file" ;;
+	esac
 	read -r -d '' "$var_name" < "$tmp_file" || true
 	rm -f "$tmp_file"
 }
 
-# <I>ntelligence + <T>ranslate
+# <I>ntelligence <T>ranslate
 it() {
-	if [[ $# -eq 0 ]]; then
-		read_with_editor text
-	else
-		text="$*"
-	fi
+	capture_text text "$@"
 	sgpt --chat translate <<-EOF
 		Further, use swear words without hesitation.
 		If you think there is a typo, point it out.
@@ -44,13 +43,9 @@ it() {
 	EOF
 }
 
-# <I>ntelligence + <I>mprove
+# <I>ntelligence <I>mprove
 ii() {
-	if [[ $# -eq 0 ]]; then
-		read_with_editor text
-	else
-		text="$*"
-	fi
+	capture_text text "$@"
 	sgpt --chat improve <<-EOF
 		Provide only the output.
 		Use British English where applicable.
@@ -60,13 +55,9 @@ ii() {
 	EOF
 }
 
-# <I>ntelligence + <G>rammar
+# <I>ntelligence <G>rammar
 ig() {
-	if [[ $# -eq 0 ]]; then
-		read_with_editor text
-	else
-		text="$*"
-	fi
+	capture_text text "$@"
 	sgpt --chat improve <<-EOF
 		Provide only the output.
 		Use British English where applicable.
