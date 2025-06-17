@@ -20,6 +20,7 @@ alias ps-cpu-and-rss-in-kb='ps -o pcpu= -o rss= -p'
 alias rgeverywhere="rg --no-ignore --hidden --follow --glob '**' --glob '!**/.git/**' --glob '**/.git/config'"
 alias rgg='rg --files -g'
 alias rgs='rg --sort path'
+alias untgz='tar -xvzf'
 
 swap() { TMPFILE=$(mktemp) && [[ -f "$1" ]] && [[ -f "$2" ]] && mv "$1" "$TMPFILE" && mv "$2" "$1" && mv "$TMPFILE" "$2"; }
 
