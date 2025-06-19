@@ -23,7 +23,7 @@ capture_text() {
 it() {
 	capture_text text "$@"
 	sgpt --chat translate <<-EOF
-		Further, use swear words without hesitation.
+		Feel free to use swear words when necessary in translation.
 		If you think there is a typo, point it out.
 		Act as a dictionary. Do not explain your actions.
 
