@@ -31,7 +31,7 @@ it() {
 			* Provide a British RP transcription first if the query is in English.
 			* Then, translate to Russian if the query is in English, or to English if the query is in Russian.
 			* List all possible translations and aim to be exhaustive.
-			* If it is not the base form, include the base form.
+			* If the query is not in the base form, include the base form.
 			* If the query is an irregular verb, include its forms.
 
 		(2) Otherwise, the query is a text, so:
