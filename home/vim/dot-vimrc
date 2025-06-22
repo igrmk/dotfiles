@@ -112,7 +112,6 @@ nmap t /TODO<cr>
 map ,, :nohl<cr>
 map <f10> :echo "hi<" . synIDattr(synID(line("."),col("."),1),"name") . '> trans<' . synIDattr(synID(line("."),col("."),0),"name") . "> lo<" . synIDattr(synIDtrans(synID(line("."),col("."),1)),"name") . ">"<cr>
 nnoremap <leader>r :%s/\<<c-r><c-w>\>//g<left><left>
-xnoremap p "_dP
 nnoremap <leader>d "_d
 vnoremap <leader>d "_d
 nmap <leader>c= :Tabularize /=<cr>
@@ -333,3 +332,13 @@ let g:fern#renderer#default#expanded_symbol  = '▼ '
 let g:fern#renderer#default#leading          = ' '
 let g:fern#renderer#default#leaf_symbol      = ' '
 let g:fern#renderer#default#root_symbol      = '~ '
+
+" IDE-style paste
+augroup IdePaste
+  autocmd!
+  autocmd TextYankPost * if v:event.operator ==# 'y' | let @z=@* | endif
+augroup END
+
+" IDE-style paste
+xnoremap p p<Cmd>let @*=@z<CR>
+xnoremap P P<Cmd>let @*=@z<CR>
