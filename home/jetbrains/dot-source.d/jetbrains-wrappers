@@ -1,7 +1,11 @@
-clionq() {
-	(clion "$@" &> /dev/null &)
-}
+case $(uname) in
+	Linux)
+		clion() {
+			(command clion "$@" &> /dev/null &)
+		}
 
-pycharmq() {
-	(pycharm "$@" &> /dev/null &)
-}
+		pycharm() {
+			(command pycharm "$@" &> /dev/null &)
+		}
+		;;
+esac
