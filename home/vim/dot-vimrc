@@ -269,8 +269,8 @@ let g:Tex_FoldedMisc = ''
 let g:markdown_syntax_github = 1
 let g:go_gorename_bin = 'gopls'
 let g:ale_linters = { 'cs': ['OmniSharp'] }
-let g:ale_echo_msg_format='%linter% %severity% (%code%): %s'
-let g:ale_loclist_msg_format='%linter% %severity% (%code%): %s'
+let g:ale_echo_msg_format = '%linter% %severity% (%code%): %s'
+let g:ale_loclist_msg_format = '%linter% %severity% (%code%): %s'
 let g:ale_sh_shell_default_shell = 'bash'
 let g:NERDDefaultAlign = 'left'
 let g:vim_ai_roles_config_file = $HOME . '/.vim/config/vim-ai-roles.ini'
@@ -335,11 +335,18 @@ let g:fern#renderer#default#leaf_symbol      = ' '
 let g:fern#renderer#default#root_symbol      = '~ '
 
 " IDE-style paste
-augroup IdePaste
-  autocmd!
-  autocmd TextYankPost * if v:event.operator ==# 'y' | let @z=@* | endif
-augroup END
-
-" IDE-style paste
-xnoremap p p<Cmd>let @*=@z<CR>
-xnoremap P P<Cmd>let @*=@z<CR>
+if has('unnamedplus')
+    augroup IdePaste
+        autocmd!
+        autocmd TextYankPost * if v:event.operator ==# 'y' | let @z = @+ | endif
+    augroup END
+    xnoremap p p<Cmd>let @+ = @z<CR>
+    xnoremap P P<Cmd>let @+ = @z<CR>
+elseif has('clipboard')
+    augroup IdePaste
+        autocmd!
+        autocmd TextYankPost * if v:event.operator ==# 'y' | let @z = @* | endif
+    augroup END
+    xnoremap p p<Cmd>let @* = @z<CR>
+    xnoremap P P<Cmd>let @* = @z<CR>
+endif
