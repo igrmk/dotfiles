@@ -281,6 +281,7 @@ let g:pymode_rope_rename_bind = '<leader>r'
 let g:ale_linters_ignore = {
     \ 'sh': ['shell'],
     \ 'tex': ['lacheck'],
+    \ 'sql': ['sqlfluff'],
 \ }
 
 let g:ale_c_build_dir_names = ['build', 'build/debug', 'build/release', 'bin']
