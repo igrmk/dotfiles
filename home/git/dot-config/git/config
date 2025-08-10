@@ -50,6 +50,7 @@
    bz = "!f() { cd ${GIT_PREFIX:-./}; echo -- $(git ls-files --modified --others --exclude-standard); }; f"
    conflicts = diff --name-only --diff-filter=U
    force-clean-all = clean -fdx
+   untrack = rm --cached
 [user]
    name = Igor Mikushkin
    email = igor.mikushkin@gmail.com
