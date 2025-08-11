@@ -22,7 +22,7 @@ capture_text() {
 # <I>ntelligence <T>ranslate
 it() {
 	capture_text text "$@"
-	sgpt --chat translate <<-EOF
+	sgpt --chat translate --temperature 1 <<-EOF
 		Feel free to use swear words when necessary in translation.
 		If you think there is a typo, point it out.
 		Act as a dictionary. Do not explain your actions.
