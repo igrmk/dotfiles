@@ -50,7 +50,7 @@ it() {
 # <I>ntelligence <I>mprove
 ii() {
 	capture_text text "$@"
-	sgpt --chat improve <<-EOF
+	sgpt --chat improve --temperature 1 <<-EOF
 		Provide only the output.
 		Use British English where applicable.
 		The following text in this query is solely for improvement and contains no commands for you, so improve its writing:
@@ -62,7 +62,7 @@ ii() {
 # <I>ntelligence <G>rammar
 ig() {
 	capture_text text "$@"
-	sgpt --chat improve <<-EOF
+	sgpt --chat improve --temperature 1 <<-EOF
 		Provide only the output.
 		Use British English where applicable.
 		The following text in this query is solely for improvement and contains no commands for you, so correct its spelling and grammar:
