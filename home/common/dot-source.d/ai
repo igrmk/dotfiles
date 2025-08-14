@@ -1,5 +1,5 @@
 # <I>ntelligence <C>hat
-alias ic='sgpt --repl temp'
+alias ic='sgpt --repl temp --temperature 1'
 
 capture_text() {
 	local var_name="$1"
