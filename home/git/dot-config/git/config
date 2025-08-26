@@ -1,3 +1,5 @@
+# vim: filetype=gitconfig
+
 [core]
    excludesfile = ~/.config/git/ignore
    filemode = true
@@ -17,31 +19,49 @@
    sw = switch
    swd = switch --detach
    rrr = restore
-   df = diff --find-copies --patience
-   df-no-ext-diff = diff --find-copies --patience --no-ext-diff
-   df-no-designer = diff --find-copies --patience -- ':!*.Designer.cs'
-   df-no-vendor = diff --find-copies --patience -- ':!vendor'
-   dc = diff --cached --find-copies --patience
-   dc-no-ext-diff = diff --cached --find-copies --patience --no-ext-diff
-   dc-no-designer = diff --cached --find-copies --patience -- ':!*.Designer.cs'
-   dc-no-vendor = diff --cached --find-copies --patience -- ':!vendor'
+
+   diff = diff --find-copies --patience
+
+   d-no-designer = d -- ':!*.Designer.cs'
+   d-no-vendor = d -- ':!vendor'
+   dc-no-designer = dc -- ':!*.Designer.cs'
+   dc-no-vendor = dc -- ':!vendor'
+
+   ddt = !git difftool --dir-diff --tool=difftastic
+   dcdt = ddt --cached
+
+   dk = !git difftool --dir-diff --tool=kdiff3
+   dck = dk --cached
+
+   dm = !git difftool --dir-diff --tool=meld
+   dcm = dm --cached
+
+   dt  = difftool
+   dtc = dt --cached
+
+   dw  = diff --find-copies --patience --color-words
+   dcw = dw --cached
+
+   dd  = "!f(){ cd \"${GIT_PREFIX:-.}\" && git -c core.pager=delta diff --find-copies --patience \"$@\"; }; f"
+   dcd = dd --cached
+
+   dr  = "!f(){ cd \"${GIT_PREFIX:-.}\" && git -c core.pager=riff diff --find-copies --patience \"$@\"; }; f"
+   dcr = dr --cached
+
+   # default
+   d = dr
+   dc = d --cached
+
    lp = log -p -M --ext-diff
-   lp- = log -p -M --find-copies --patience --color-words --word-diff-regex="[[:alnum:]]+|[[:print:]\\\t]"
    lp-no-designer = log -p -M -- ':!*.Designer.cs'
-   lp-no-ext-diff = log -p -M --no-ext-diff
+   lpdt  = "!GIT_EXTERNAL_DIFF=difft git log -p -M --ext-diff"
+   lpd = "!git -c core.pager=delta log -p -M"
+   lpr = "!git -c core.pager=riff log -p -M"
    glog = log --graph --oneline --pretty=fuller --author-date-order
-   gloga = log --graph --oneline --pretty=fuller --author-date-order --all
+   gloga = gloga --all
+
    overview = log --graph --oneline --pretty=fuller --author-date-order --all --simplify-by-decoration
    dry = commit --dry-run -a
-   kd = !git difftool --dir-diff --tool=kdiff3
-   kdc = !git difftool --dir-diff --tool=kdiff3 --cached
-   md = !git difftool --dir-diff --tool=meld
-   mdc = !git difftool --dir-diff --tool=meld --cached
-   dt  = difftool
-   dw  = diff --find-copies --color-words --patience
-   dcw = diff --find-copies --color-words --patience --cached
-   d- = diff --find-copies --patience --color-words --word-diff-regex="[[:alnum:]]+|[[:print:]\\\t]" --no-ext-diff
-   dc- = diff --find-copies --patience --color-words --word-diff-regex="[[:alnum:]]+|[[:print:]\\\t]" --cached --no-ext-diff
    unamend = reset --soft HEAD@{1}
    unmerge = git reset --hard ORIG_HEAD
    get-submodules = submodule update --init --recursive
@@ -59,7 +79,6 @@
    colorMovedWs = allow-indentation-change
    tool = kdiff3
    pager = less -SFXM +Gg
-   external = difft
 [difftool]
    prompt = false
 [push]
@@ -88,9 +107,21 @@
    sort = -version:refname
 [difftool "kdiff3"]
    cmd = kdiff3 --cs FullAnalysis=1 --cs ShowLineNumbers=1 --cs SkipDirStatus=1 --cs FollowDirLinks=1 --cs FollowFileLinks=1 "$LOCAL" "$REMOTE"
+[difftool "difftastic"]
+   cmd = difft "$LOCAL" "$REMOTE"
 [diff "hex"]
    textconv = hexdump -v -C
    binary = true
+[delta]
+   syntax-theme             = None
+   side-by-side             = true
+   plus-style               = green
+   plus-emph-style          = bold green reverse
+   minus-style              = red
+   minus-emph-style         = bold red reverse
+   line-numbers-minus-style = red
+   line-numbers-plus-style  = green
+   line-numbers-zero-style  = gray
 
 # Must be last to override earlier settings
 [include]
