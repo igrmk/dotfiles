@@ -52,13 +52,13 @@
    d = dr
    dc = d --cached
 
-   lp = log -p -M --ext-diff
    lp-no-designer = log -p -M -- ':!*.Designer.cs'
    lpdt  = "!GIT_EXTERNAL_DIFF=difft git log -p -M --ext-diff"
    lpd = "!git -c core.pager=delta log -p -M"
    lpr = "!git -c core.pager=riff log -p -M"
    glog = log --graph --oneline --pretty=fuller --author-date-order
    gloga = gloga --all
+   lp = lpr
 
    overview = log --graph --oneline --pretty=fuller --author-date-order --all --simplify-by-decoration
    dry = commit --dry-run -a
