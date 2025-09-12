@@ -121,6 +121,9 @@
    line-numbers-minus-style = red
    line-numbers-plus-style  = green
    line-numbers-zero-style  = gray
+   wrap-left-symbol = ▽
+   wrap-right-symbol = ▽
+   wrap-right-prefix-symbol = △
 
 # Must be last to override earlier settings
 [include]
