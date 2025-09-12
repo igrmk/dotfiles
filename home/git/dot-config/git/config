@@ -15,7 +15,6 @@
    st = status
    st-no-designer = status -- ':!*.Designer.cs'
    st-no-vendor = status -- ':!vendor'
-   ci = "!f() { git commit -m \"$(git rev-parse --abbrev-ref HEAD): $1\"; }; f"
    sw = switch
    swd = switch --detach
    rrr = restore
@@ -42,10 +41,10 @@
    dw  = diff --find-copies --patience --color-words
    dcw = dw --cached
 
-   dd  = "!f(){ cd \"${GIT_PREFIX:-.}\" && git -c core.pager=delta diff --find-copies --patience \"$@\"; }; f"
+   dd  = -c core.pager=delta diff --find-copies --patience
    dcd = dd --cached
 
-   dr  = "!f(){ cd \"${GIT_PREFIX:-.}\" && git -c core.pager=riff diff --find-copies --patience \"$@\"; }; f"
+   dr  = -c core.pager=riff diff --find-copies --patience
    dcr = dr --cached
 
    # default
@@ -54,8 +53,8 @@
 
    lp-no-designer = log -p -M -- ':!*.Designer.cs'
    lpdt  = "!GIT_EXTERNAL_DIFF=difft git log -p -M --ext-diff"
-   lpd = "!git -c core.pager=delta log -p -M"
-   lpr = "!git -c core.pager=riff log -p -M"
+   lpd = -c core.pager=delta log -p -M
+   lpr = -c core.pager=riff log -p -M
    glog = log --graph --oneline --pretty=fuller --author-date-order
    gloga = gloga --all
    lp = lpr
