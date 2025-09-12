@@ -112,18 +112,20 @@
    textconv = hexdump -v -C
    binary = true
 [delta]
-   syntax-theme             = None
-   side-by-side             = true
-   plus-style               = green
-   plus-emph-style          = bold green reverse
-   minus-style              = red
-   minus-emph-style         = bold red reverse
-   line-numbers-minus-style = red
-   line-numbers-plus-style  = green
-   line-numbers-zero-style  = gray
-   wrap-left-symbol = ▽
-   wrap-right-symbol = ▽
-   wrap-right-prefix-symbol = △
+   syntax-theme              = None
+   side-by-side              = true
+   plus-style                = green
+   plus-emph-style           = bold green reverse
+   minus-style               = red
+   minus-emph-style          = bold red reverse
+   line-numbers-minus-style  = red
+   line-numbers-plus-style   = green
+   line-numbers-zero-style   = gray
+   wrap-left-symbol          = ▽
+   wrap-right-symbol         = ▽
+   wrap-right-prefix-symbol  = △
+   line-numbers-left-format  = "{nm:>3} "
+   line-numbers-right-format = "{np:>3} "
 
 # Must be last to override earlier settings
 [include]
