@@ -126,9 +126,9 @@
    line-numbers-minus-style  = red
    line-numbers-plus-style   = green
    line-numbers-zero-style   = gray
-   wrap-left-symbol          = ↓
-   wrap-right-symbol         = ↓
-   wrap-right-prefix-symbol  = ↑
+   wrap-left-symbol          = ░
+   wrap-right-symbol         = ░
+   wrap-right-prefix-symbol  = ░
    line-numbers-left-format  = "{nm:>} "
    line-numbers-right-format = "{np:>} "
 
