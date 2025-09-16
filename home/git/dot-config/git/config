@@ -131,6 +131,7 @@
    wrap-right-prefix-symbol  = ░
    line-numbers-left-format  = "{nm:>} "
    line-numbers-right-format = "{np:>} "
+   tabs                      = 4
 
 # Must be last to override earlier settings
 [include]
