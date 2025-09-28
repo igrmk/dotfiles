@@ -1,38 +1,86 @@
 pg_grant_readonly() {
-	local connection_string=$1
+	local admin_connection_string=$1
 	local target_db=$2
 	local username=$3
 
-	if [[ -z $connection_string || -z $target_db || -z $username ]]; then
+	if [[ -z $admin_connection_string || -z $target_db || -z $username ]]; then
 		echo "Usage: pg_grant_readonly <postgres://...> <target_db> <username>"
 		return 1
 	fi
 
-	psql "$connection_string" --quiet --set=target_db="$target_db" --set=username="$username" <<-SQL
-		\echo Granting readonly access in :target_db to :username
+	psql "$admin_connection_string" --quiet --set=target_db="$target_db" --set=username="$username" <<-SQL
+		\pset pager off
+		\timing off
+		\echo Granting :username readonly access to existing objects in :target_db.public...
 		\c :target_db
 
 		grant connect on database :target_db to :username;
 		grant usage on schema public to :username;
 		grant select on all tables in schema public to :username;
 		grant select on all sequences in schema public to :username;
+
+		\echo Granting :username readonly access to future objects created by :USER in :target_db.public...
 		alter default privileges in schema public grant select on tables to :username;
 		alter default privileges in schema public grant select on sequences to :username;
+
+		select r.rolname as db_owner from pg_database d join pg_roles r on r.oid = d.datdba where d.datname = :'target_db'
+		\gset
+		\echo Granting :username readonly access to future objects created by :db_owner in :target_db.public...
+
+		alter default privileges for role :"db_owner" in schema public grant select on tables to :username;
+		alter default privileges for role :"db_owner" in schema public grant select on sequences to :username;
+	SQL
+}
+
+pg_grant_readwrite() {
+	local admin_connection_string=$1
+	local target_db=$2
+	local username=$3
+
+	if [[ -z $admin_connection_string || -z $target_db || -z $username ]]; then
+		echo "Usage: pg_grant_readwrite <postgres://...> <target_db> <username>"
+		return 1
+	fi
+
+	psql "$admin_connection_string" --quiet --set=target_db="$target_db" --set=username="$username" <<-SQL
+		\pset pager off
+		\timing off
+		\echo Granting :username readwrite access to existing objects in :target_db.public...
+		\c :target_db
+
+		grant connect on database :target_db to :username;
+		grant usage on schema public to :username;
+		grant select, insert, update, delete on all tables in schema public to :username;
+		grant usage, select, update on all sequences in schema public to :username;
+
+		\echo Granting :username readwrite access to future objects created by :USER in :target_db.public...
+		alter default privileges in schema public grant select, insert, update, delete on tables to :username;
+		alter default privileges in schema public grant usage, select, update on sequences to :username;
+
+		select r.rolname as db_owner
+		from pg_database d
+		join pg_roles r on r.oid = d.datdba
+		where d.datname = :'target_db'
+		\gset
+		\echo Granting :username readwrite access to future objects created by :db_owner in :target_db.public...
+
+		alter default privileges for role :"db_owner" in schema public grant select, insert, update, delete on tables to :username;
+		alter default privileges for role :"db_owner" in schema public grant usage, select, update on sequences to :username;
 	SQL
 }
 
 pg_change_owner() {
-	local connection_string=$1
+	local admin_connection_string=$1
 	local target_db=$2
 	local new_owner=$3
 
-	if [[ -z $connection_string || -z $target_db || -z $new_owner ]]; then
+	if [[ -z $admin_connection_string || -z $target_db || -z $new_owner ]]; then
 		echo "Usage: pg_change_owner <postgres://...> <target_db> <new_owner>"
 		return 1
 	fi
 
-	psql "$connection_string" --quiet --set=target_db="$target_db" --set=new_owner="$new_owner" <<-'SQL'
-		\echo Changing owner of database :target_db to :new_owner
+	psql "$admin_connection_string" --quiet --set=target_db="$target_db" --set=new_owner="$new_owner" <<-'SQL'
+		\echo Changing owner of database :target_db to :new_owner...
 		alter database :target_db owner to :new_owner;
 
 		\c :target_db
