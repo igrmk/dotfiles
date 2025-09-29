@@ -45,11 +45,12 @@ pg_grant_readwrite() {
 	psql "$admin_connection_string" --quiet --set=target_db="$target_db" --set=username="$username" <<-SQL
 		\pset pager off
 		\timing off
-		\echo Granting :username readwrite access to existing objects in :target_db.public...
+		\echo Granting :username readwrite access in :target_db.public...
 		\c :target_db
 
 		grant connect on database :target_db to :username;
-		grant usage on schema public to :username;
+		grant temporary on database :target_db to :username;
+		grant usage, create on schema public to :username;
 		grant select, insert, update, delete on all tables in schema public to :username;
 		grant usage, select, update on all sequences in schema public to :username;
 
