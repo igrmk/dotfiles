@@ -18,6 +18,7 @@ alias cal='ncal -C'
 alias googler='googler --noua'
 alias ps-cpu-and-rss-in-kb='ps -o pcpu= -o rss= -p'
 alias rgeverywhere="rg --no-ignore --hidden --follow --glob '**' --glob '!**/.git/**' --glob '**/.git/config'"
+alias fdeverywhere="fd -u --exclude .git"
 alias rgg='rg --files -g'
 alias rgs='rg --sort path'
 alias untgz='tar -xvzf'
