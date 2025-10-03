@@ -72,3 +72,4 @@ rr-ext() {
 	find . \( -type f -o -type d \) -name "*.$ext" -exec rm -rf {} +
 }
 
+wormhole() { command wormhole "$@" --code-length 6; }
