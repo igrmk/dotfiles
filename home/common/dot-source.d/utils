@@ -47,11 +47,11 @@ grep-ids() {
 
 list-ids() {
 	[[ -z "$1" ]] && { echo "Error: missing search term" >&2; return 1; }
-	ids "$@" -oNI | sort | uniq
+	grep-ids "$@" -oNI | sort | uniq
 }
 
 grep-guids() { rg "[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}" "$@"; }
-list-guids() { guids "$@" -oN | sort | uniq; }
+list-guids() { grep-guids "$@" -oN | sort | uniq; }
 
 show-color() {
 	[[ ! "$1" =~ ^[0-9A-Fa-f]{6}$ ]] && { echo "Error: invalid hex color" >&2; return 1; }
