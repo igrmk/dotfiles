@@ -22,6 +22,7 @@ alias fdeverywhere="fd -u --exclude .git"
 alias rgg='rg --files -g'
 alias rgs='rg --sort path'
 alias untgz='tar -xvzf'
+alias weather-london='curl wttr.in/London'
 
 swap() { TMPFILE=$(mktemp) && [[ -f "$1" ]] && [[ -f "$2" ]] && mv "$1" "$TMPFILE" && mv "$2" "$1" && mv "$TMPFILE" "$2"; }
 
