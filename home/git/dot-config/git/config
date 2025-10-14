@@ -65,6 +65,9 @@
    lp = lpd
    lp1 = lpd1
 
+   showd = -c core.pager=delta show
+   showd1 = -c delta.side-by-side=false showd
+
    overview = log --graph --oneline --pretty=fuller --author-date-order --all --simplify-by-decoration
    dry = commit --dry-run -a
    unamend = reset --soft HEAD@{1}
