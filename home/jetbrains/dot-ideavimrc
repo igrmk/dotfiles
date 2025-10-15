@@ -46,6 +46,7 @@ Plug 'tpope/vim-surround'
 Plug 'tpope/vim-commentary'
 
 map <c-o> <Action>(Back)
+map <c-i> <Action>(Forward)
 nmap <leader>r <Action>(RenameElement)
 nmap gu <Action>(ShowUsages)
 nmap gi <Action>(GotoImplementation)
@@ -63,3 +64,5 @@ nnoremap <Leader>ml :action ShowBookmarks<CR>
 nmap s <plug>(easymotion-s)
 map <leader>j <plug>(easymotion-j)
 map <leader>k <plug>(easymotion-k)
+map [c <Action>(PreviousDiff)
+map ]c <Action>(NextDiff)
