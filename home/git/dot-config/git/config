@@ -11,13 +11,14 @@
    status = auto
    branch = auto
 [alias]
-   ap = add -p
    st = status
    st-no-designer = status -- ':!*.Designer.cs'
    st-no-vendor = status -- ':!vendor'
    sw = switch
    swd = switch --detach
-   rrr = restore
+   rrrd = -c core.pager=delta restore
+   rrrd1 = -c delta.side-by-side=false rrrd
+   rrr = rrrd
 
    diff = diff --find-copies --patience
 
