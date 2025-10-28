@@ -112,8 +112,7 @@ nmap t /TODO<cr>
 map ,, :nohl<cr>
 map <f10> :echo "hi<" . synIDattr(synID(line("."),col("."),1),"name") . '> trans<' . synIDattr(synID(line("."),col("."),0),"name") . "> lo<" . synIDattr(synIDtrans(synID(line("."),col("."),1)),"name") . ">"<cr>
 nnoremap <leader>r :%s/\<<c-r><c-w>\>//g<left><left>
-nnoremap <leader>d "_d
-vnoremap <leader>d "_d
+vnoremap x "_d
 nmap <leader>c= :Tabularize /=<cr>
 vmap <leader>c= :Tabularize /=<cr>
 nmap <leader>c: :Tabularize /:/l0r1<cr>

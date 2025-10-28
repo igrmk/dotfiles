@@ -45,6 +45,7 @@ Plug 'easymotion/vim-easymotion'
 Plug 'tpope/vim-surround'
 Plug 'tpope/vim-commentary'
 
+vnoremap x "_d
 map <c-o> <Action>(Back)
 map <c-i> <Action>(Forward)
 nmap <leader>r <Action>(RenameElement)
@@ -66,3 +67,11 @@ map <leader>j <plug>(easymotion-j)
 map <leader>k <plug>(easymotion-k)
 map [c <Action>(PreviousDiff)
 map ]c <Action>(NextDiff)
+
+nmap <leader>ds <Action>(Debug)
+nmap <leader>dd <Action>(ToggleLineBreakpoint)
+nmap <leader>dc <Action>(Resume)
+nmap <leader>di <Action>(StepInto)
+nmap <leader>dn <Action>(StepOver)
+nmap <leader>do <Action>(StepOut)
+nmap <leader>dl <Action>(ViewBreakpoints)
