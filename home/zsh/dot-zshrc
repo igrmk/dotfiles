@@ -7,6 +7,16 @@ for file in ~/.source.d/*; do
 	[[ -f "$file" && -r "$file" ]] && source "$file"
 done
 
+# This must precede "zplug load", otherwise CAVEZ cannot initialise a newly opened tab.
+# The export below is for reference; it actually coincides with the default:
+# https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html
+export MAMBA_ROOT_PREFIX="$HOME/micromamba"
+export CAVEZ_CONDA_FLAVOUR=micromamba
+
+if command -v micromamba >/dev/null 2>&1; then
+	eval "$(micromamba shell hook --shell=zsh)"
+fi
+
 zplug romkatv/powerlevel10k, as:theme, depth:1
 zplug igrmk/cavez
 
@@ -32,11 +42,6 @@ export HYPHEN_INSENSITIVE="false"
 export BRIGHT=$(cat ~/.bright)
 export PAGER='less -SFXR'
 
-# The export below is for reference; it actually coincides with the default:
-# https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html
-export MAMBA_ROOT_PREFIX="$HOME/micromamba"
-
-export CAVEZ_CONDA_FLAVOUR=micromamba
 export CAVEZ_VERBOSE="false"
 export DISABLE_MAGIC_FUNCTIONS="false"
 export DISABLE_LS_COLORS="false"
@@ -71,10 +76,6 @@ autoload -U compinit; compinit
 export EDITOR='vim'
 
 eval "$(zoxide init zsh)"
-
-if command -v micromamba >/dev/null 2>&1; then
-	eval "$(micromamba shell hook --shell=zsh)"
-fi
 
 autoload -U up-line-or-beginning-search
 autoload -U down-line-or-beginning-search
