@@ -113,3 +113,29 @@ pg_change_owner() {
 		select pg_temp.change_owner(:'new_owner');
 	SQL
 }
+
+pg_grant_elevation() {
+	local admin_connection_string=$1
+	local target_db=$2
+	local username=$3
+
+	if [[ -z $admin_connection_string || -z $target_db || -z $username ]]; then
+		echo "Usage: pg_grant_elevation <postgres://...> <target_db> <username>"
+		return 1
+	fi
+
+	psql "$admin_connection_string" --quiet --set=target_db="$target_db" --set=username="$username" <<-SQL
+		\pset pager off
+		\timing off
+		\echo Allowing :username to set role to the owner of :target_db...
+		\c :target_db
+
+		select r.rolname as db_owner
+		from pg_database d
+		join pg_roles r on r.oid = d.datdba
+		where d.datname = :'target_db'
+		\gset
+
+		grant :"db_owner" to :"username";
+	SQL
+}
