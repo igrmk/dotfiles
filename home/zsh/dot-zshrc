@@ -30,7 +30,7 @@ export ZSH_THEME="powerlevel10k/powerlevel10k"
 export CASE_SENSITIVE="true"
 export HYPHEN_INSENSITIVE="false"
 export BRIGHT=$(cat ~/.bright)
-export PAGER='less -SFX'
+export PAGER='less -SFXR'
 
 # The export below is for reference; it actually coincides with the default:
 # https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html
