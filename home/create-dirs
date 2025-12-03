@@ -3,6 +3,7 @@ set -euo pipefail
 
 dirs=(
 	"$HOME/.config/git"
+	"$HOME/.config/mpv"
 	"$HOME/.local/bin"
 	"$HOME/.source.d"
 	"$HOME/.config/kitty"
