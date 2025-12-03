@@ -49,6 +49,9 @@ vnoremap x "_d
 map <c-o> <Action>(Back)
 map <c-i> <Action>(Forward)
 nmap <leader>r <Action>(RenameElement)
+" It seems this action is broken. Restore the mapping once it's fixed
+" nmap gd <Action>(GotoDeclarationOnly)
+nmap gd <Action>(GotoDeclaration)
 nmap gu <Action>(ShowUsages)
 nmap gi <Action>(GotoImplementation)
 nmap gh <Action>(CallHierarchy)
