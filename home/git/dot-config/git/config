@@ -108,7 +108,9 @@
    old = red reverse
    new = green reverse
    oldMoved = cyan reverse
+   oldMovedAlternative = cyan reverse
    newMoved = yellow reverse
+   newMovedAlternative = yellow reverse
    whitespace = red reverse
 [init]
    defaultBranch = main
