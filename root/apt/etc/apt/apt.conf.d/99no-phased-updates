@@ -1,0 +1,3 @@
+// https://documentation.ubuntu.com/server/explanation/software/about-apt-upgrade-and-phased-updates/
+APT::Get::Always-Include-Phased-Updates true;
+Update-Manager::Always-Include-Phased-Updates true;
