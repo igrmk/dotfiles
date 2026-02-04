@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Use relative paths when referencing files (e.g., `home/git/` not `/Users/.../dotfiles/home/git/`)
 - Use conventional commits (e.g., `feat:`, `fix:`, `chore:`, `docs:`)
 - Don't use unnecessary flags (e.g., `git -C` when already in the working directory)
+- Use one-line commit messages (no body)
 
 ## Overview
 
