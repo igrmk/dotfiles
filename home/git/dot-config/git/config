@@ -1,7 +1,6 @@
 # vim: filetype=gitconfig
 
 [core]
-   excludesfile = ~/.config/git/ignore
    filemode = true
    autocrlf = false
    editor = vi
