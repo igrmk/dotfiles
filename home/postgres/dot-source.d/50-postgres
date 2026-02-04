@@ -103,7 +103,7 @@ pg_change_owner() {
 			end loop;
 
 			for obj in
-				select table_name from information_schema.views where table_schema = 'public'
+				select table_name from information_schema.views where table_schema = 'public' and table_name not like 'pg_stat_statements%'
 			loop
 				execute format('alter view public.%I owner to %I;', obj.table_name, new_owner);
 			end loop;
