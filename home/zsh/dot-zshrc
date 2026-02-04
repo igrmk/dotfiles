@@ -92,7 +92,20 @@ export KEYTIMEOUT=1
 if [ -f "$HOME/google-cloud-sdk/path.zsh.inc" ]; then . "$HOME/google-cloud-sdk/path.zsh.inc"; fi
 if [ -f "$HOME/google-cloud-sdk/completion.zsh.inc" ]; then . "$HOME/google-cloud-sdk/completion.zsh.inc"; fi
 
-[[ -f ~/.fzf.zsh ]] && . ~/.fzf.zsh
+# fzf setup - disable default bindings to set custom ones below
+if [[ -f ~/.fzf.zsh ]]; then
+	export FZF_CTRL_T_COMMAND=''
+	export FZF_ALT_C_COMMAND=''
+	export FZF_CTRL_R_COMMAND=''
+	source ~/.fzf.zsh
+	# Custom fzf bindings (vim mode)
+	bindkey -M viins '^T' fzf-file-widget
+	bindkey -M vicmd '^T' fzf-file-widget
+	bindkey -M viins '^F' fzf-cd-widget
+	bindkey -M vicmd '^F' fzf-cd-widget
+	bindkey -M viins '^R' fzf-history-widget
+	bindkey -M vicmd '^R' fzf-history-widget
+fi
 
 autoload -Uz chpwd_recent_dirs cdr add-zsh-hook
 add-zsh-hook chpwd chpwd_recent_dirs
