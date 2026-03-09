@@ -146,6 +146,7 @@ xnoremap <leader>ii :AIEdit /improve<CR>
 
 execute "set lcs=tab:".nr2char(187).nr2char(183)
 execute "set lcs+=trail:".nr2char(183)
+execute "set lcs+=nbsp:".nr2char(9141)
 
 au VimEnter * syntax match Invisible /\r$/ conceal
 au VimEnter * call matchadd('SpecialKey', '^\s\+', -1)
