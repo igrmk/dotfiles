@@ -86,6 +86,8 @@ pg_change_owner() {
 
 		\c :target_db
 
+		alter schema public owner to :new_owner;
+
 		create function pg_temp.change_owner(new_owner text) returns void as $$
 		declare
 			obj record;
