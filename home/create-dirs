@@ -2,12 +2,15 @@
 set -euo pipefail
 
 dirs=(
+	"$HOME/.config/environment.d"
 	"$HOME/.config/git"
+	"$HOME/.config/karabiner"
+	"$HOME/.config/kitty"
 	"$HOME/.config/mpv"
+	"$HOME/.config/pgcli"
+	"$HOME/.ipython/profile_default"
 	"$HOME/.local/bin"
 	"$HOME/.source.d"
-	"$HOME/.config/kitty"
-	"$HOME/.ipython/profile_default"
 	"$HOME/.vim/config"
 )
 
