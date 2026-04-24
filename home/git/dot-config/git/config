@@ -14,6 +14,7 @@
    st = status
    st-no-designer = status -- ':!*.Designer.cs'
    st-no-vendor = status -- ':!vendor'
+   stashes = stash list --date=local
    sw = switch
    swd = switch --detach
    rrrd = -c core.pager=delta restore
