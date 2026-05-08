@@ -273,13 +273,13 @@ let g:Tex_FoldedEnvironments = ''
 let g:Tex_FoldedMisc = ''
 let g:markdown_syntax_github = 1
 let g:go_gorename_bin = 'gopls'
-let g:ale_linters = { 'cs': ['OmniSharp'] }
+let g:NERDDefaultAlign = 'left'
+let g:vim_ai_roles_config_file = $HOME . '/.vim/config/vim-ai-roles.ini'
+let g:ale_linters = { 'cs': ['OmniSharp'], 'python': ['ruff'] }
+let g:ale_fixers = {'python': ['ruff', 'ruff_format'] }
 let g:ale_echo_msg_format = '%linter% %severity% (%code%): %s'
 let g:ale_loclist_msg_format = '%linter% %severity% (%code%): %s'
 let g:ale_sh_shell_default_shell = 'bash'
-let g:NERDDefaultAlign = 'left'
-let g:vim_ai_roles_config_file = $HOME . '/.vim/config/vim-ai-roles.ini'
-let g:pymode_rope_rename_bind = '<leader>r'
 
 " shell doesn't work well with extglob
 " lacheck gives a lot of false positives
@@ -297,6 +297,7 @@ let g:fern#default_hidden = 1
 let g:fern#drawer_width = 47
 let g:fern#hide_cursor = 1
 let g:fern#default_exclude = '^\%(\.git\|bin\|obj\)$'
+let g:pymode_rope_rename_bind = '<leader>r'
 let g:pymode_options_max_line_length=120
 let g:pymode_lint_cwindow=0
 " Ingore missing whitespace after ':' (false positive in f-strings)
