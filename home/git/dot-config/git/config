@@ -127,7 +127,7 @@
 [delta]
    syntax-theme              = None
    side-by-side              = true
-   navigate                  = true
+   navigate                  = false
    plus-style                = green
    plus-emph-style           = bold green reverse
    minus-style               = red
