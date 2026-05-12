@@ -20,12 +20,16 @@ mdcat() {
 		end
 
 		function Meta (m)
-			m['header-includes'] = {RawText '\\usepackage{tcolorbox}'}
+			m['header-includes'] = {
+				RawText [[\usepackage{tcolorbox}]],
+				RawText [[\usepackage{fvextra}]],
+				RawText [[\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\}}]],
+			}
 			return m
 		end
 
 		function CodeBlock (cb)
-			return {RawText '\\begin{tcolorbox}', cb, RawText '\\end{tcolorbox}'}
+			return {RawText [[\begin{tcolorbox}]], cb, RawText [[\end{tcolorbox}]]}
 		end
 	EOF
 
@@ -63,12 +67,16 @@ gfmcat() {
 		end
 
 		function Meta (m)
-			m['header-includes'] = {RawText '\\usepackage{tcolorbox}'}
+			m['header-includes'] = {
+				RawText [[\usepackage{tcolorbox}]],
+				RawText [[\usepackage{fvextra}]],
+				RawText [[\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\}}]],
+			}
 			return m
 		end
 
 		function CodeBlock (cb)
-			return {RawText '\\begin{tcolorbox}', cb, RawText '\\end{tcolorbox}'}
+			return {RawText [[\begin{tcolorbox}]], cb, RawText [[\end{tcolorbox}]]}
 		end
 	EOF
 
