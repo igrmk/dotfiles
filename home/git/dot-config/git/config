@@ -106,8 +106,8 @@
    decorate = true
    follow = true
 [color "diff"]
-   old = "#e3acac" reverse
-   new = "#86c749" reverse
+   old = white "#725757"
+   new = white "#416023"
    oldMoved = cyan reverse
    oldMovedAlternative = cyan reverse
    newMoved = yellow reverse
@@ -128,12 +128,12 @@
    syntax-theme              = None
    side-by-side              = true
    navigate                  = false
-   plus-style                = "#86c749" reverse
-   plus-emph-style           = bold "#86c749" reverse
-   plus-non-emph-style       = green
-   minus-style               = "#e3acac" reverse
-   minus-emph-style          = bold "#e3acac" reverse
-   minus-non-emph-style      = red
+   plus-style                = white "#416023"
+   plus-emph-style           = bold white "#416023"
+   plus-non-emph-style       = white "#30481a"
+   minus-style               = white "#725757"
+   minus-emph-style          = bold white "#725757"
+   minus-non-emph-style      = white "#523e3e"
    line-numbers-minus-style  = red
    line-numbers-plus-style   = green
    line-numbers-zero-style   = gray
