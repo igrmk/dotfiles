@@ -105,14 +105,6 @@
    abbrevCommit = true
    decorate = true
    follow = true
-[color "diff"]
-   old = white "#785c5a"
-   new = white "#5b6d5a"
-   oldMoved = "#95f7ff" "#785c5a"
-   oldMovedAlternative = "#95f7ff" "#785c5a"
-   newMoved = "#95f7ff" "#5b6d5a"
-   newMovedAlternative = "#95f7ff" "#5b6d5a"
-   whitespace = red reverse
 [init]
    defaultBranch = main
 [tag]
@@ -128,6 +120,11 @@
    syntax-theme              = None
    side-by-side              = true
    navigate                  = false
+   # Remap git's color-moved ANSI (defaults: bold magenta/blue/cyan/yellow) to chosen colors in delta.
+   # Done here rather than via color.diff.*Moved on the suspicion
+   # that delta's matcher may handle git's defaults more reliably than custom hex.
+   # At least, you can't set color.diff.*Moved to plain red/green — delta can't tell them from regular added/removed lines.
+   map-styles                = bold magenta => "#95f7ff" "#785c5a", bold blue => "#95f7ff" "#785c5a", bold cyan => "#95f7ff" "#5b6d5a", bold yellow => "#95f7ff" "#5b6d5a"
    plus-style                = white "#5b6d5a"
    plus-emph-style           = bold white "#5b6d5a"
    plus-non-emph-style       = white "#4d4d58"
