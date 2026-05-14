@@ -131,9 +131,9 @@
    minus-style               = white "#785c5a"
    minus-emph-style          = bold white "#785c5a"
    minus-non-emph-style      = white "#4d4d58"
-   line-numbers-minus-style  = red
-   line-numbers-plus-style   = green
-   line-numbers-zero-style   = gray
+   line-numbers-minus-style  = "#e4afab"
+   line-numbers-plus-style   = "#adcfab"
+   line-numbers-zero-style   = "#c0c0c0"
    wrap-left-symbol          = ░
    wrap-right-symbol         = ░
    wrap-right-prefix-symbol  = ░
