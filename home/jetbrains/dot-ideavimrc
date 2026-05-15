@@ -1,7 +1,6 @@
 let mapleader=' '
 
 set visualbell
-set keep-english-in-normal
 set scrolloff=6
 set clipboard+=unnamed,unnamedplus
 
@@ -55,6 +54,7 @@ nmap gd <Action>(GotoDeclaration)
 nmap gu <Action>(ShowUsages)
 nmap gi <Action>(GotoImplementation)
 nmap gh <Action>(CallHierarchy)
+nmap gs <Action>(GotoSuperMethod)
 map <leader>= <Action>(ReformatCode)
 nmap <leader>- <Action>(OptimizeImports)
 nmap <leader>a <Action>(ShowIntentionActions)
@@ -62,7 +62,7 @@ nmap <leader>m <Action>(Move)
 map ,v <Action>(BuildProject)
 map <c-z> <Action>(ToggleDistractionFreeMode)
 map q <Action>(ActivateProjectToolWindow)
-nomap <leader>$ :source ~/.ideavimrc<CR>
+nnoremap <leader>$ :source ~/.ideavimrc<CR>
 nnoremap <Leader>mm :action ToggleBookmark<CR>
 nnoremap <Leader>ml :action ShowBookmarks<CR>
 nmap s <plug>(easymotion-s)
