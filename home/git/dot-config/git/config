@@ -127,16 +127,17 @@
    map-styles                = bold magenta => "#95f7ff" "#785c5a", bold blue => "#95f7ff" "#785c5a", bold cyan => "#95f7ff" "#5b6d5a", bold yellow => "#95f7ff" "#5b6d5a"
    plus-style                = white "#5b6d5a"
    plus-emph-style           = bold white "#5b6d5a"
-   plus-non-emph-style       = white "#4d4d58"
+   plus-non-emph-style       = white "#454550"
    minus-style               = white "#785c5a"
    minus-emph-style          = bold white "#785c5a"
-   minus-non-emph-style      = white "#4d4d58"
+   minus-non-emph-style      = white "#454550"
    line-numbers-minus-style  = "#e4afab"
    line-numbers-plus-style   = "#adcfab"
    line-numbers-zero-style   = "#c0c0c0"
    wrap-left-symbol          = ░
    wrap-right-symbol         = ░
    wrap-right-prefix-symbol  = ░
+   inline-hint-style         = white
    line-numbers-left-format  = "{nm:>} "
    line-numbers-right-format = "{np:>} "
    tabs                      = 4
