@@ -33,10 +33,13 @@ mdcat() {
 		end
 	EOF
 
+	output="$(mktemp -d)"
+	input="$(realpath "$1")"
 	params=(
 		--from=markdown
 		--to=pdf
 		--pdf-engine=xelatex
+		--resource-path="$(dirname "$input")"
 		-V 'colorlinks:true'
 		-V 'mainfont:Inter'
 		-V 'pagestyle:empty'
@@ -46,8 +49,6 @@ mdcat() {
 	)
 	command -v mermaid-filter > /dev/null && params+=(-F mermaid-filter)
 
-	output="$(mktemp -d)"
-	input="$(realpath "$1")"
 	(
 		cd "$output" &&
 			pandoc "${params[@]}" "$input" --lua-filter=<(printf "%s" "$lua_filter") -o - |
@@ -80,10 +81,13 @@ gfmcat() {
 		end
 	EOF
 
+	output="$(mktemp -d)"
+	input="$(realpath "$1")"
 	params=(
 		--from=gfm
 		--to=pdf
 		--pdf-engine=xelatex
+		--resource-path="$(dirname "$input")"
 		-V 'colorlinks:true'
 		-V 'mainfont:Inter'
 		-V 'pagestyle:empty'
@@ -93,8 +97,6 @@ gfmcat() {
 	)
 	command -v mermaid-filter > /dev/null && params+=(-F mermaid-filter)
 
-	output="$(mktemp -d)"
-	input="$(realpath "$1")"
 	(
 		cd "$output" &&
 			pandoc "${params[@]}" "$input" --lua-filter=<(printf "%s" "$lua_filter") -o - |
