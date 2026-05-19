@@ -120,22 +120,29 @@
    syntax-theme              = None
    side-by-side              = true
    navigate                  = false
+
    # Remap git's color-moved ANSI (defaults: bold magenta/blue/cyan/yellow) to chosen colors in delta.
    # Done here rather than via color.diff.*Moved on the suspicion
    # that delta's matcher may handle git's defaults more reliably than custom hex.
    # At least, you can't set color.diff.*Moved to plain red/green — delta can't tell them from regular added/removed lines.
-   map-styles                = bold magenta => black "#aaaaaa", \
-                               bold blue    => black "#aaaaaa", \
-                               bold cyan    => black "#aaaaaa", \
-                               bold yellow  => black "#aaaaaa"
-   plus-style                = black "#8ebe8c"
-   plus-emph-style           = bold black "#8ebe8c"
-   plus-non-emph-style       = white "#4a4b4d"
-   minus-style               = black "#ce9b98"
-   minus-emph-style          = bold black "#ce9b98"
-   minus-non-emph-style      = white "#4a4b4d"
-   line-numbers-minus-style  = "#e4afab"
-   line-numbers-plus-style   = "#adcfab"
+   map-styles                = bold magenta => white "#545557", \
+                               bold blue    => white "#545557", \
+                               bold cyan    => white "#545557", \
+                               bold yellow  => white "#545557"
+
+   # The minus/plus background colours below are tuned to equal OKLab L ≈ 0.76,
+   # so neither feels visually heavier.
+   minus-style               = black "#d6a29f"
+   minus-emph-style          = bold black "#d6a29f"
+   minus-non-emph-style      = white "#545557"
+   plus-style                = black "#90c08e"
+   plus-emph-style           = bold black "#90c08e"
+   plus-non-emph-style       = white "#545557"
+
+   # The line number colors below are the minus/plus background colors with
+   # OKLab lightness raised by 0.1 and chroma raised by 0.005.
+   line-numbers-minus-style  = "#fbc0bd"
+   line-numbers-plus-style   = "#ade1ab"
    line-numbers-zero-style   = "#c0c0c0"
    wrap-left-symbol          = ░
    wrap-right-symbol         = ░
