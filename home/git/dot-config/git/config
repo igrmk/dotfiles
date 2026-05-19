@@ -124,13 +124,16 @@
    # Done here rather than via color.diff.*Moved on the suspicion
    # that delta's matcher may handle git's defaults more reliably than custom hex.
    # At least, you can't set color.diff.*Moved to plain red/green — delta can't tell them from regular added/removed lines.
-   map-styles                = bold magenta => italic "#c0c0c0" "#785c5a", bold blue => italic "#c0c0c0" "#785c5a", bold cyan => italic "#c0c0c0" "#5b6d5a", bold yellow => italic "#c0c0c0" "#5b6d5a"
-   plus-style                = white "#5b6d5a"
-   plus-emph-style           = bold white "#5b6d5a"
-   plus-non-emph-style       = white "#434446"
-   minus-style               = white "#785c5a"
-   minus-emph-style          = bold white "#785c5a"
-   minus-non-emph-style      = white "#434446"
+   map-styles                = bold magenta => black "#aaaaaa", \
+                               bold blue    => black "#aaaaaa", \
+                               bold cyan    => black "#aaaaaa", \
+                               bold yellow  => black "#aaaaaa"
+   plus-style                = black "#8ebe8c"
+   plus-emph-style           = bold black "#8ebe8c"
+   plus-non-emph-style       = white "#4a4b4d"
+   minus-style               = black "#ce9b98"
+   minus-emph-style          = bold black "#ce9b98"
+   minus-non-emph-style      = white "#4a4b4d"
    line-numbers-minus-style  = "#e4afab"
    line-numbers-plus-style   = "#adcfab"
    line-numbers-zero-style   = "#c0c0c0"
