@@ -152,7 +152,7 @@
    line-numbers-left-format  = "{nm:>} "
    line-numbers-right-format = "{np:>} "
    tabs                      = 4
-   wrap-word-lookback        = 20
+   wrap-word-lookback        = 40
 
 # Must be last to override earlier settings
 [include]
