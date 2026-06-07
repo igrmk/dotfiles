@@ -122,6 +122,7 @@ setopt PUSHD_SILENT
 setopt APPEND_HISTORY
 setopt SHARE_HISTORY
 setopt HIST_IGNORE_SPACE
+setopt HIST_FIND_NO_DUPS
 
 FNM_PATH="$HOME/.fnm"
 if command -v fnm >/dev/null 2>&1; then
