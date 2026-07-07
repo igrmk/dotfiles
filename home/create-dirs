@@ -10,6 +10,7 @@ dirs=(
 	"$HOME/.config/pgcli"
 	"$HOME/.ipython/profile_default"
 	"$HOME/.local/bin"
+	"$HOME/.local/share/pandoc/filters"
 	"$HOME/.source.d"
 	"$HOME/.vim/config"
 )

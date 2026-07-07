@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Refresh vendored third-party files copied into this repo.
+#
+# Each entry maps a repo-relative path to its pinned upstream URL.
+# This list is also the record of where every vendored file came from.
+# To update one, bump the version in its URL and re-run this script.
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+# <repo-relative path>, then <upstream url>
+vendored=(
+	home/pandoc/dot-local/share/pandoc/filters/diagram.lua
+	https://raw.githubusercontent.com/pandoc-ext/diagram/v1.2.0/_extensions/diagram/diagram.lua
+)
+
+for ((i = 0; i < ${#vendored[@]}; i += 2)); do
+	dest="${vendored[i]}"
+	url="${vendored[i + 1]}"
+	curl -fsSL "$url" -o "$dest"
+	echo "updated $dest"
+done

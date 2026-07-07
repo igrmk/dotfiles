@@ -1,0 +1,5 @@
+# mermaid (via pandoc diagram filter -> mmdc -> puppeteer)
+# needs a browser whose AppArmor profile permits the sandbox;
+# the distro chrome qualifies, the bundled puppeteer chromium does not.
+# macOS needs nothing (its sandbox works out of the box).
+export PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
