@@ -32,6 +32,23 @@ pg_grant_readonly() {
 	SQL
 }
 
+pg_grant_read_all_stats() {
+	local admin_connection_string=$1
+	local username=$2
+
+	if [[ -z $admin_connection_string || -z $username ]]; then
+		echo "Usage: pg_grant_read_all_stats <postgres://...> <username>"
+		return 1
+	fi
+
+	psql "$admin_connection_string" --quiet --set=username="$username" <<-SQL
+		\pset pager off
+		\timing off
+		\echo Granting :username membership in pg_read_all_stats...
+		grant pg_read_all_stats to :username;
+	SQL
+}
+
 pg_grant_readwrite() {
 	local admin_connection_string=$1
 	local target_db=$2
