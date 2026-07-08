@@ -3,7 +3,7 @@ pg_grant_readonly() {
 	local target_db=$2
 	local username=$3
 
-	if [[ -z $admin_connection_string || -z $target_db || -z $username ]]; then
+	if [[ -z $admin_connection_string || -z $target_db || -z $username || $# -gt 3 ]]; then
 		echo "Usage: pg_grant_readonly <postgres://...> <target_db> <username>"
 		return 1
 	fi
@@ -36,7 +36,7 @@ pg_grant_read_all_stats() {
 	local admin_connection_string=$1
 	local username=$2
 
-	if [[ -z $admin_connection_string || -z $username ]]; then
+	if [[ -z $admin_connection_string || -z $username || $# -gt 2 ]]; then
 		echo "Usage: pg_grant_read_all_stats <postgres://...> <username>"
 		return 1
 	fi
@@ -54,7 +54,7 @@ pg_grant_readwrite() {
 	local target_db=$2
 	local username=$3
 
-	if [[ -z $admin_connection_string || -z $target_db || -z $username ]]; then
+	if [[ -z $admin_connection_string || -z $target_db || -z $username || $# -gt 3 ]]; then
 		echo "Usage: pg_grant_readwrite <postgres://...> <target_db> <username>"
 		return 1
 	fi
@@ -92,7 +92,7 @@ pg_change_owner() {
 	local target_db=$2
 	local new_owner=$3
 
-	if [[ -z $admin_connection_string || -z $target_db || -z $new_owner ]]; then
+	if [[ -z $admin_connection_string || -z $target_db || -z $new_owner || $# -gt 3 ]]; then
 		echo "Usage: pg_change_owner <postgres://...> <target_db> <new_owner>"
 		return 1
 	fi
@@ -138,7 +138,7 @@ pg_grant_elevation() {
 	local target_db=$2
 	local username=$3
 
-	if [[ -z $admin_connection_string || -z $target_db || -z $username ]]; then
+	if [[ -z $admin_connection_string || -z $target_db || -z $username || $# -gt 3 ]]; then
 		echo "Usage: pg_grant_elevation <postgres://...> <target_db> <username>"
 		return 1
 	fi
