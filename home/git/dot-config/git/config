@@ -82,6 +82,7 @@
    conflicts = diff --name-only --diff-filter=U
    force-clean-all = clean -fdx
    untrack = rm --cached
+   pushf = push --force-with-lease --force-if-includes
 [user]
    name = Igor Mikushkin
    email = igor.mikushkin@gmail.com
