@@ -7,6 +7,7 @@ dirs=(
 	"$HOME/.config/karabiner"
 	"$HOME/.config/kitty"
 	"$HOME/.config/mpv"
+	"$HOME/.config/nvim"
 	"$HOME/.config/pgcli"
 	"$HOME/.ipython/profile_default"
 	"$HOME/.local/bin"
