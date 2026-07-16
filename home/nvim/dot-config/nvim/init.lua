@@ -17,6 +17,23 @@ require('lazy').setup({
             pcall(vim.cmd.colorscheme, vim.env.BRIGHT == 'high' and 'hull' or 'kull')
         end,
     },
+    {
+        'nvim-treesitter/nvim-treesitter',
+        branch = 'main',
+        build = ':TSUpdate',
+        lazy = false,
+        config = function()
+            -- Parsers for c, lua, markdown ship with Neovim; install the rest.
+            require('nvim-treesitter').install({ 'cpp', 'go', 'python', 'bash', 'json', 'yaml', 'toml' })
+            vim.api.nvim_create_autocmd('FileType', {
+                pattern = { 'c', 'cpp', 'go', 'python', 'lua', 'sh', 'bash', 'json', 'yaml', 'toml', 'markdown' },
+                callback = function(args)
+                    -- pcall: the parser may still be compiling on first launch.
+                    pcall(vim.treesitter.start, args.buf)
+                end,
+            })
+        end,
+    },
 })
 
 local opt = vim.opt
