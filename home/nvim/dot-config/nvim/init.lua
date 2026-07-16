@@ -69,7 +69,6 @@ vim.api.nvim_create_user_command('Clean', [[%s/\s\+$//e]], {})
 local map = vim.keymap.set
 map('', ',,', '<cmd>nohlsearch<cr>')
 map('n', '<leader>r', [[:%s/\<<C-r><C-w>\>//g<Left><Left>]])
-map('n', '<leader>l', '<cmd>lclose<cr>')
 map('n', '<leader>q', '<cmd>lclose | cclose<cr>')
 map('x', 'x', '"_d')
 map('n', 'Q', '<Nop>')
