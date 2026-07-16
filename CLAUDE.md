@@ -10,6 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Use one-line commit messages and don't use heredocs when committing
 - Don't use `+` in commit messages (write "and" or use commas)
 - Capitalize acronyms and proper nouns in commit messages (e.g., `LSP`, `Python`)
+- NEVER push to origin unless explicitly asked; committing does not imply pushing (applies to every repo, not just this one)
 
 ## Overview
 
