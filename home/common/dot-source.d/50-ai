@@ -10,7 +10,7 @@ capture_text() {
 	fi
 	local tmp_file editor
 	tmp_file=$(mktemp) || return
-	editor="${EDITOR:-vim}"
+	editor="${EDITOR:-nvim}"
 	case "$editor" in
 		*vim*) "$editor" +startinsert "$tmp_file" ;;
 		*)     "$editor" "$tmp_file" ;;

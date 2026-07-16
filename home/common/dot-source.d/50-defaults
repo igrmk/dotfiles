@@ -8,7 +8,8 @@ alias grep='grep --color=auto'
 alias egrep='egrep --color=auto'
 alias df='df -h'
 alias du='du -h'
-alias vim=vi
+alias vi=nvim
+alias vim=nvim
 alias j=zi
 
 mysql() { command mysql "$@" --pager; }

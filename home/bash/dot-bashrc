@@ -20,7 +20,7 @@ shopt -s histappend
 shopt -s checkwinsize
 shopt -s extglob
 export PROMPT_COMMAND="history -a"
-export EDITOR='vim'
+export EDITOR='nvim'
 export PAGER='less -SFX'
 export HISTTIMEFORMAT='%F %T | '
 export TIME_STYLE='long-iso'

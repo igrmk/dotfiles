@@ -4,7 +4,7 @@
    excludesfile = ~/.config/git/ignore
    filemode = true
    autocrlf = false
-   editor = vi
+   editor = nvim
    abbrev = 8
 [color]
    diff = auto
