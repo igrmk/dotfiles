@@ -91,6 +91,36 @@ vim.api.nvim_create_autocmd('FileType', {
     end,
 })
 
+-- Go LSP.
+vim.api.nvim_create_autocmd('FileType', {
+    pattern = 'go',
+    callback = function(args)
+        local marker = vim.fs.find(
+            { 'go.work', 'go.mod', '.git' },
+            { upward = true, path = vim.api.nvim_buf_get_name(args.buf) }
+        )[1]
+        vim.lsp.start({
+            name = 'gopls',
+            cmd = { 'gopls' },
+            root_dir = marker and vim.fs.dirname(marker) or nil,
+        })
+    end,
+})
+
+-- Python LSP: ruff (lint/format) + basedpyright (types, navigation).
+vim.api.nvim_create_autocmd('FileType', {
+    pattern = 'python',
+    callback = function(args)
+        local marker = vim.fs.find(
+            { 'pyproject.toml', 'ruff.toml', '.ruff.toml', 'setup.py', 'setup.cfg', '.git' },
+            { upward = true, path = vim.api.nvim_buf_get_name(args.buf) }
+        )[1]
+        local root = marker and vim.fs.dirname(marker) or nil
+        vim.lsp.start({ name = 'ruff', cmd = { 'ruff', 'server' }, root_dir = root })
+        vim.lsp.start({ name = 'basedpyright', cmd = { 'basedpyright-langserver', '--stdio' }, root_dir = root })
+    end,
+})
+
 -- Buffer-local LSP mappings, set when a server attaches.
 vim.api.nvim_create_autocmd('LspAttach', {
     callback = function(args)
