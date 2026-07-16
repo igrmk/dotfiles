@@ -34,6 +34,14 @@ require('lazy').setup({
             })
         end,
     },
+    {
+        'folke/flash.nvim',
+        -- Leave f/t/F/T and / search untouched; s jump only.
+        opts = { modes = { char = { enabled = false }, search = { enabled = false } } },
+        keys = {
+            { 's', mode = { 'n', 'x', 'o' }, function() require('flash').jump() end, desc = 'Flash jump' },
+        },
+    },
 })
 
 local opt = vim.opt
