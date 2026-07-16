@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Use conventional commits (e.g., `feat:`, `fix:`, `chore:`, `docs:`)
 - Don't use unnecessary flags (e.g., `git -C` when already in the working directory)
 - Use one-line commit messages and don't use heredocs when committing
+- Don't use `+` in commit messages (write "and" or use commas)
+- Capitalize acronyms and proper nouns in commit messages (e.g., `LSP`, `Python`)
 
 ## Overview
 
