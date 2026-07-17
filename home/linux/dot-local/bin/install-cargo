@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Install the Rust CLI tools kept on this machine (via cargo).
+# Re-run to install missing tools or upgrade them to the latest release.
+set -euo pipefail
+
+cargo install tree-sitter-cli
+cargo install --git https://github.com/igrmk/delta --branch local git-delta

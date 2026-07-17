@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Install the snaps kept on this machine.
+# Ubuntu ships snapd, the base/platform snaps (core*, bare, gnome-*, gtk-*, mesa-*),
+# and the default apps (firefox, thunderbird, snap-store, ...) on its own,
+# so only the ones installed by hand are listed here.
+set -euo pipefail
+
+# Strict-confinement snaps.
+snaps=(
+	losslesscut
+	spotify
+	telegram-desktop
+	yt-dlp
+)
+
+# Classic-confinement snaps (need --classic).
+classic_snaps=(
+	aws-cli
+	go
+	nvim
+)
+
+install_snap() {
+	local name=$1
+	shift
+	if snap list "$name" &>/dev/null; then
+		echo "$name already installed"
+	else
+		sudo snap install "$@" "$name"
+	fi
+}
+
+for s in "${snaps[@]}"; do
+	install_snap "$s"
+done
+
+for s in "${classic_snaps[@]}"; do
+	install_snap "$s" --classic
+done
