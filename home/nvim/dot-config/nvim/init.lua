@@ -2,7 +2,7 @@ vim.g.mapleader = ' '
 
 -- Bootstrap lazy.nvim (plugin manager).
 local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
-if not (vim.uv or vim.loop).fs_stat(lazypath) then
+if not vim.uv.fs_stat(lazypath) then
     vim.fn.system({ 'git', 'clone', '--filter=blob:none', '--branch=stable',
         'https://github.com/folke/lazy.nvim.git', lazypath })
 end
@@ -100,7 +100,7 @@ vim.api.nvim_create_autocmd('FileType', {
         -- clangd's own search skips nested build dirs; point it at compile_commands.json.
         if root then
             for _, sub in ipairs({ 'build/Debug', 'build/Release', 'build' }) do
-                if vim.loop.fs_stat(root .. '/' .. sub .. '/compile_commands.json') then
+                if vim.uv.fs_stat(root .. '/' .. sub .. '/compile_commands.json') then
                     table.insert(cmd, '--compile-commands-dir=' .. root .. '/' .. sub)
                     break
                 end
@@ -158,7 +158,7 @@ vim.api.nvim_create_autocmd('LspAttach', {
         map('n', '<leader>r', vim.lsp.buf.rename, o)
         map('n', '<leader>a', vim.lsp.buf.code_action, o)
         map('n', '<leader>=', function() vim.lsp.buf.format() end, o)
-        map('n', '[d', vim.diagnostic.goto_prev, o)
-        map('n', ']d', vim.diagnostic.goto_next, o)
+        map('n', '[d', function() vim.diagnostic.jump({ count = -1, float = true }) end, o)
+        map('n', ']d', function() vim.diagnostic.jump({ count = 1, float = true }) end, o)
     end,
 })
