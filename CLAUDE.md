@@ -11,6 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Don't use `+` in commit messages (write "and" or use commas)
 - Capitalize acronyms and proper nouns in commit messages (e.g., `LSP`, `Python`)
 - NEVER push to origin unless explicitly asked; committing does not imply pushing (applies to every repo, not just this one)
+- Break comment lines at clause boundaries, not mid-phrase (e.g., keep a parenthetical list on one line)
 
 ## Overview
 
