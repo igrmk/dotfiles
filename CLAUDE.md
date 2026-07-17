@@ -12,6 +12,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Capitalize acronyms and proper nouns in commit messages (e.g., `LSP`, `Python`)
 - NEVER push to origin unless explicitly asked; committing does not imply pushing (applies to every repo, not just this one)
 - Break comment lines at clause boundaries, not mid-phrase (e.g., keep a parenthetical list on one line)
+- Keep Markdown lines to 100 columns max, wrapping at clause boundaries (not mid-phrase)
+
+## Installing tools
+
+When installing software (not configs), prefer these methods in order and use the highest one
+that has the tool:
+
+1. System packages (`apt` on Linux)
+2. Homebrew (macOS)
+3. Snap (Linux — see `home/linux/dot-local/bin/install-snaps`)
+4. `uv tool install` (Python CLIs and language servers)
+5. `cargo install` (Rust CLIs — see `home/linux/dot-local/bin/install-cargo`)
+6. `npm install -g` (node-only tools, last resort)
+
+Avoid `curl | sh` installers and other ad-hoc global installs when a listed manager has the tool.
 
 ## Overview
 
