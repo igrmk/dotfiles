@@ -24,9 +24,9 @@ require('lazy').setup({
         lazy = false,
         config = function()
             -- Parsers for c, lua, markdown ship with Neovim; install the rest.
-            require('nvim-treesitter').install({ 'cpp', 'go', 'python', 'bash', 'json', 'yaml', 'toml' })
+            require('nvim-treesitter').install({ 'cpp', 'c_sharp', 'go', 'python', 'bash', 'json', 'yaml', 'toml' })
             vim.api.nvim_create_autocmd('FileType', {
-                pattern = { 'c', 'cpp', 'go', 'python', 'lua', 'sh', 'bash', 'json', 'yaml', 'toml', 'markdown' },
+                pattern = { 'c', 'cpp', 'cs', 'go', 'python', 'lua', 'sh', 'bash', 'json', 'yaml', 'toml', 'markdown' },
                 callback = function(args)
                     -- pcall: the parser may still be compiling on first launch.
                     pcall(vim.treesitter.start, args.buf)
@@ -41,6 +41,15 @@ require('lazy').setup({
         keys = {
             { 's', mode = { 'n', 'x', 'o' }, function() require('flash').jump() end, desc = 'Flash jump' },
         },
+    },
+    {
+        -- Servers whose lspconfig defaults fit as-is. clangd stays hand-rolled below:
+        -- its query-driver and compile-commands flags aren't the default.
+        'neovim/nvim-lspconfig',
+        ft = { 'cs', 'go', 'python' },
+        config = function()
+            vim.lsp.enable({ 'roslyn_ls', 'gopls', 'ruff', 'basedpyright' })
+        end,
     },
 })
 
@@ -116,35 +125,7 @@ vim.api.nvim_create_autocmd('FileType', {
     end,
 })
 
--- Go LSP.
-vim.api.nvim_create_autocmd('FileType', {
-    pattern = 'go',
-    callback = function(args)
-        local marker = vim.fs.find(
-            { 'go.work', 'go.mod', '.git' },
-            { upward = true, path = vim.api.nvim_buf_get_name(args.buf) }
-        )[1]
-        vim.lsp.start({
-            name = 'gopls',
-            cmd = { 'gopls' },
-            root_dir = marker and vim.fs.dirname(marker) or nil,
-        })
-    end,
-})
-
--- Python LSP: ruff (lint/format) + basedpyright (types, navigation).
-vim.api.nvim_create_autocmd('FileType', {
-    pattern = 'python',
-    callback = function(args)
-        local marker = vim.fs.find(
-            { 'pyproject.toml', 'ruff.toml', '.ruff.toml', 'setup.py', 'setup.cfg', '.git' },
-            { upward = true, path = vim.api.nvim_buf_get_name(args.buf) }
-        )[1]
-        local root = marker and vim.fs.dirname(marker) or nil
-        vim.lsp.start({ name = 'ruff', cmd = { 'ruff', 'server' }, root_dir = root })
-        vim.lsp.start({ name = 'basedpyright', cmd = { 'basedpyright-langserver', '--stdio' }, root_dir = root })
-    end,
-})
+-- gopls, ruff, basedpyright, and roslyn_ls (C#) are enabled via nvim-lspconfig in the plugin spec above.
 
 -- Buffer-local LSP mappings, set when a server attaches.
 vim.api.nvim_create_autocmd('LspAttach', {
