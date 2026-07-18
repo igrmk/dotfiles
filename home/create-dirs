@@ -2,6 +2,7 @@
 set -euo pipefail
 
 dirs=(
+	"$HOME/.colima/_templates"
 	"$HOME/.config/environment.d"
 	"$HOME/.config/git"
 	"$HOME/.config/karabiner"

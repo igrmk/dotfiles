@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Install Colima and the Docker CLI kept on this machine (via Homebrew).
+# Colima replaces Docker Desktop with a lightweight, CLI-only daemon in a VM.
+# Re-run to install anything missing or upgrade to the latest release.
+set -euo pipefail
+
+brew install colima docker docker-buildx
+
+# The docker CLI only auto-discovers plugins in ~/.docker/cli-plugins, but on
+# Apple Silicon Homebrew installs them under a prefix Docker doesn't search,
+# so link buildx in (needed for `docker buildx build`).
+plugins_dir="$HOME/.docker/cli-plugins"
+install -d -m 700 "$plugins_dir"
+ln -sfn "$(brew --prefix)/opt/docker-buildx/bin/docker-buildx" "$plugins_dir/docker-buildx"
+
+echo "Done. Start the daemon with: colima start"

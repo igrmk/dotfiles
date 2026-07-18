@@ -1,0 +1,22 @@
+# Colima default template, seeded into every new instance.
+# Only affects instances created after this file exists; edit an existing one
+# with `colima start --edit` or recreate it with `colima delete && colima start`.
+
+# Resources for the VM (Docker Desktop's defaults are stingy; bump them here).
+cpu: 4
+memory: 8
+disk: 60
+
+# Apple Silicon sweet spot: Apple's Virtualization.framework with Rosetta for
+# fast amd64 emulation, and virtiofs for fast bind mounts.
+vmType: vz
+rosetta: true
+mountType: virtiofs
+
+# Propagate inotify events into the VM so file-watchers see bind-mount changes.
+mountInotify: true
+
+runtime: docker
+
+kubernetes:
+  enabled: false
