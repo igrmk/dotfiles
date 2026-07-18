@@ -1,0 +1,228 @@
+#!/usr/bin/env bash
+# Install the Homebrew formulae and casks kept on this machine.
+# brew skips anything already present, so re-run any time to fill in what's missing.
+# Regenerate these lists on a fully set-up machine with:
+#   brew leaves --installed-on-request   # top-level formulae
+#   brew list --cask                     # casks
+# The Docker stack (colima, docker, docker-buildx) is listed here too, but
+# install-colima additionally wires the buildx plugin, so run that afterwards.
+set -euo pipefail
+
+# Third-party taps required by some items below.
+# Other taps seen on this machine but with nothing installed from them:
+# charmbracelet/tap, dart-lang/dart, sass/sass, stripe/stripe-cli.
+taps=(
+	isen-ng/dotnet-sdk-versions   # dotnet-sdk* casks
+	mongodb/brew                  # mongosh
+)
+
+formulae=(
+	agg
+	argyll-cms
+	asciinema
+	automake
+	awk
+	basedpyright
+	bat
+	certbot
+	cloc
+	cmake
+	colima
+	coreutils
+	csvkit
+	cuetools
+	dialog
+	difftastic
+	diffutils
+	docker
+	docker-buildx
+	doctl
+	dos2unix
+	enca
+	exiftool
+	fd
+	ffmpeg
+	findutils
+	fnm
+	fzf
+	gawk
+	geoip
+	geoipupdate
+	gh
+	gitui
+	glances
+	gnu-sed
+	golangci-lint
+	graphviz
+	grep
+	guile
+	helm
+	htop
+	icdiff
+	id3v2
+	ijq
+	iproute2mac
+	ipython
+	jc
+	jid
+	jpeginfo
+	jq
+	kubernetes-cli
+	less
+	libass
+	libfido2
+	libraw
+	librist
+	libsvg-cairo
+	logcli
+	magic-wormhole
+	micromamba
+	mongosh
+	mono
+	mupdf
+	mypy
+	mysql
+	ncdu
+	neofetch
+	neovim
+	ninja
+	nmap
+	openjdk@21
+	openssl@1.1
+	p7zip
+	pandoc
+	pdf2svg
+	pdftk-java
+	pgcli
+	pipx
+	postgresql@17
+	postgresql@18
+	prettier
+	pv
+	py3cairo
+	python@3.10
+	python@3.11
+	qpdf
+	resvg
+	riff
+	ripgrep
+	rlwrap
+	ruff
+	rust
+	s3cmd
+	samba
+	sd
+	shellcheck
+	shntool
+	socat
+	sponge
+	stern
+	stow
+	tectonic
+	telnet
+	terraform
+	texlive
+	tidy-html5
+	tmux
+	tree-sitter-cli
+	uv
+	verapdf
+	vim
+	watch
+	wget
+	wireguard-tools
+	xmlstarlet
+	yamllint
+	yarn
+	youtube-dl
+	yq
+	yt-dlp
+	zoxide
+	zplug
+)
+
+# Docker Desktop casks (docker, docker-desktop) are intentionally left out;
+# this machine uses Colima instead (see install-colima).
+casks=(
+	adobe-acrobat-reader
+	anaconda
+	audacity
+	chromedriver
+	claude-code@latest
+	commander-one
+	dotnet-sdk
+	dotnet-sdk10
+	dotnet-sdk10-0-300
+	dotnet-sdk6-0-400
+	dotnet-sdk7-0-100
+	dotnet-sdk8-0-100
+	firefox
+	font-dejavu
+	font-fontawesome
+	font-inria-sans
+	font-inter
+	font-jetbrains-mono
+	font-latin-modern
+	font-latin-modern-math
+	font-monaspace
+	font-poppins
+	font-source-sans-3
+	font-tex-gyre-heros
+	font-tex-gyre-pagella
+	font-tex-gyre-pagella-math
+	font-tex-gyre-schola
+	font-work-sans
+	gimp
+	inkscape
+	karabiner-elements
+	kdiff3
+	keepassxc
+	kitty
+	libreoffice
+	lmms
+	macfuse
+	meld
+	mitmproxy
+	obs
+	protonvpn
+	rar
+	shotcut
+	skim
+	stolendata-mpv
+	veracrypt
+	vlc
+	weasis
+	wkhtmltopdf
+	xournal++
+	xournal-plus-plus
+)
+
+install_formula() {
+	local name=$1
+	if brew list --formula "$name" &>/dev/null; then
+		echo "$name already installed"
+	else
+		brew install "$name"
+	fi
+}
+
+install_cask() {
+	local name=$1
+	if brew list --cask "$name" &>/dev/null; then
+		echo "$name already installed"
+	else
+		brew install --cask "$name"
+	fi
+}
+
+for t in "${taps[@]}"; do
+	brew tap "$t"
+done
+
+for f in "${formulae[@]}"; do
+	install_formula "$f"
+done
+
+for c in "${casks[@]}"; do
+	install_cask "$c"
+done
