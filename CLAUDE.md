@@ -13,6 +13,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - NEVER push to origin unless explicitly asked; committing does not imply pushing (applies to every repo, not just this one)
 - Break comment lines at clause boundaries, not mid-phrase (e.g., keep a parenthetical list on one line)
 - Keep Markdown lines to 100 columns max, wrapping at clause boundaries (not mid-phrase)
+- 100 columns is an upper bound, not a target; lines often land well short of it
+- Pick break points by grammar, not by width
+- Break where speech pauses longest: sentence end, then comma, then phrase boundary
+- If a clause won't fit in 100 columns, rewrite it rather than split it mid-phrase
 
 ## Installing tools
 
