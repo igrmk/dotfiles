@@ -1,0 +1,10 @@
+if command -v colima >/dev/null 2>&1; then
+	# Testcontainers-Go does its own Docker host discovery.
+	# It did not resolve the colima context here, so DOCKER_HOST must be set explicitly.
+	export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
+
+	# Testcontainers bind-mounts this socket into the Ryuk reaper container.
+	# Under Colima the endpoint is a host path that does not exist inside the VM,
+	# so point it at the in-VM socket instead.
+	export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+fi
