@@ -100,6 +100,8 @@ opt.list = true
 opt.listchars = { tab = '»·', trail = '·', nbsp = '⎵' }
 opt.clipboard = 'unnamed,unnamedplus'
 opt.swapfile = false
+-- Drives the CursorHold diagnostic float; the 4s default feels broken.
+opt.updatetime = 200
 opt.fixendofline = false
 opt.foldenable = false
 opt.langmap = 'ФИСВУАПРШОЛДЬТЩЗЙКЫЕГМЦЧНЯ;ABCDEFGHIJKLMNOPQRSTUVWXYZ,фисвуапршолдьтщзйкыегмцчня;abcdefghijklmnopqrstuvwxyz'
@@ -107,10 +109,27 @@ opt.langmap = 'ФИСВУАПРШОЛДЬТЩЗЙКЫЕГМЦЧНЯ;ABCDEFGHIJKL
 vim.api.nvim_create_user_command('Sudow', 'w !sudo tee % >/dev/null', {})
 vim.api.nvim_create_user_command('Clean', [[%s/\s\+$//e]], {})
 
+-- Dismissing is a keypress, which re-arms CursorHold, so the float would pop back.
+local diag_float_muted = false
+local diag_float_line = 0
+
+local function close_floats()
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+        if vim.api.nvim_win_get_config(win).relative ~= '' then
+            -- pcall: force=false throws on a modified float; skip it, don't abort the loop.
+            pcall(vim.api.nvim_win_close, win, false)
+        end
+    end
+end
+
 local map = vim.keymap.set
 map('', ',,', '<cmd>nohlsearch<cr>')
 map('n', '<leader>r', [[:%s/\<<C-r><C-w>\>//g<Left><Left>]])
-map('n', '<leader>q', '<cmd>lclose | cclose<cr>')
+map('n', '<leader>q', function()
+    diag_float_muted = true
+    close_floats()
+    vim.cmd('lclose | cclose')
+end)
 map('x', 'x', '"_d')
 map('n', 'Q', '<Nop>')
 map('n', 'QQ', '<cmd>cquit<cr>')
@@ -158,6 +177,47 @@ vim.api.nvim_create_autocmd('FileType', {
 })
 
 -- gopls, ruff, basedpyright, and roslyn_ls (C#) are enabled via nvim-lspconfig in the plugin spec above.
+
+-- Neovim 0.11+ shows no message text by default, only underline and signs.
+-- The float adds the server name and rule code.
+vim.diagnostic.config({
+    underline = true,
+    severity_sort = true,
+    float = {
+        source = true,
+        border = 'rounded',
+        suffix = function(d) return d.code and ('  [' .. d.code .. ']') or '' end,
+    },
+})
+
+-- Float the diagnostic once the cursor settles.
+-- DiagnosticChanged also covers opening straight onto a bad line.
+vim.api.nvim_create_autocmd({ 'CursorHold', 'DiagnosticChanged' }, {
+    callback = function(args)
+        if diag_float_muted then return end
+        if args.buf ~= vim.api.nvim_get_current_buf() then return end
+        if vim.api.nvim_get_mode().mode ~= 'n' then return end
+        -- Don't stack over a focusable popup like K hover; our own float is not focusable.
+        for _, win in ipairs(vim.api.nvim_list_wins()) do
+            local cfg = vim.api.nvim_win_get_config(win)
+            if cfg.relative ~= '' and cfg.focusable then return end
+        end
+        -- The default close_events fire on horizontal motion too, which flickers.
+        vim.diagnostic.open_float({
+            focusable = false,
+            close_events = { 'CursorMovedI', 'InsertCharPre', 'BufLeave', 'WinLeave' },
+        })
+        diag_float_line = vim.api.nvim_win_get_cursor(0)[1]
+    end,
+})
+
+-- The float is line-scoped, so only a line change should close it.
+vim.api.nvim_create_autocmd('CursorMoved', {
+    callback = function()
+        diag_float_muted = false
+        if vim.api.nvim_win_get_cursor(0)[1] ~= diag_float_line then close_floats() end
+    end,
+})
 
 -- Buffer-local LSP mappings, set when a server attaches.
 vim.api.nvim_create_autocmd('LspAttach', {
