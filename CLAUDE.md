@@ -68,7 +68,13 @@ Stow's `--dotfiles` option is enabled via `.stowrc`. Files named `dot-*` become 
 
 ### Modular Shell Configuration
 
-Shell configs use a `.source.d/` pattern for modularity. Files in `~/.source.d/` are sourced by `.zshrc` in alphabetical order. Naming convention: `50-<platform/tool>-<function>` (e.g., `50-linux-paths`, `50-mac-aliases`).
+Shell configs use a `.source.d/` pattern for modularity. Files in `~/.source.d/` are sourced by `.zshrc` in alphabetical order. Naming convention: `<NN>-<platform/tool>-<function>` (e.g., `10-mac-paths`, `50-mac-aliases`).
+
+The numeric prefix is a load-order tier:
+- `10-` — PATH setup only. These run first so later files can probe for tools.
+- `50-` — everything else (aliases, functions, tool config).
+
+Anything that tests for a tool at load time (`command -v`, `which`) must sort after the `10-` files, otherwise the tool is not on PATH yet and the check silently fails.
 
 Platform-specific packages (`linux/`, `mac/`) add their own `.source.d/` files when stowed.
 
