@@ -43,11 +43,43 @@ require('lazy').setup({
         },
     },
     {
-        -- Servers whose lspconfig defaults fit as-is. clangd stays hand-rolled below:
+        -- Servers on lspconfig defaults, apart from basedpyright. clangd stays hand-rolled below:
         -- its query-driver and compile-commands flags aren't the default.
         'neovim/nvim-lspconfig',
         ft = { 'cs', 'go', 'python' },
         config = function()
+            -- Type checking off by default; projects opt in via [tool.basedpyright],
+            -- which makes basedpyright drop every setting below.
+            vim.lsp.config('basedpyright', {
+                -- Drop the default .git fallback.
+                -- Go-to-definition opens stubs under Homebrew's Cellar,
+                -- whose nearest .git is /opt/homebrew: that would root the whole tree.
+                -- Python projects have a real marker; stubs get single-file mode.
+                root_markers = {
+                    'pyrightconfig.json',
+                    'pyproject.toml',
+                    'setup.py',
+                    'setup.cfg',
+                    'requirements.txt',
+                    'Pipfile',
+                },
+                settings = {
+                    basedpyright = {
+                        analysis = {
+                            typeCheckingMode = 'off',
+                            -- Setting exclude replaces pyright's defaults, so repeat them.
+                            -- Indexing ignores openFilesOnly, so build/ would double symbol hits.
+                            exclude = {
+                                '**/node_modules',
+                                '**/__pycache__',
+                                '**/.*',
+                                '**/build',
+                                '**/dist',
+                            },
+                        },
+                    },
+                },
+            })
             vim.lsp.enable({ 'roslyn_ls', 'gopls', 'ruff', 'basedpyright' })
         end,
     },
