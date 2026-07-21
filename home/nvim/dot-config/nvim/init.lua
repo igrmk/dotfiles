@@ -8,6 +8,20 @@ if not vim.uv.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
+-- Scope pickers to the repo above the cwd,
+-- so a subdirectory launch still searches the whole project.
+-- Anchoring on the current file would root them at Homebrew after a jump into the Go stdlib.
+local function project_picker(name)
+    return function()
+        local root = vim.fs.root(vim.uv.cwd(), '.git') or vim.uv.cwd()
+        require('telescope.builtin')[name]({ cwd = root })
+    end
+end
+
+local function picker(name)
+    return function() require('telescope.builtin')[name]() end
+end
+
 require('lazy').setup({
     {
         'igrmk/kull-vim',
@@ -43,11 +57,45 @@ require('lazy').setup({
         },
     },
     {
+        'nvim-telescope/telescope.nvim',
+        dependencies = {
+            'nvim-lua/plenary.nvim',
+            -- Native fzf sorter, a C extension, so it builds on install.
+            { 'nvim-telescope/telescope-fzf-native.nvim', build = 'make' },
+        },
+        cmd = 'Telescope',
+        keys = {
+            { '<leader>o', project_picker('find_files'), desc = 'Find files' },
+            { '<leader>p', project_picker('oldfiles'), desc = 'Recent files' },
+            { '<leader>b', picker('buffers'), desc = 'Buffers' },
+            { '<leader>/', project_picker('live_grep'), desc = 'Live grep' },
+            { '<leader><tab>', picker('keymaps'), desc = 'Keymaps' },
+        },
+        opts = {
+            defaults = {
+                mappings = {
+                    -- fzf's selection keys. In the prompt, j/k type text.
+                    i = {
+                        ['<C-j>'] = 'move_selection_next',
+                        ['<C-k>'] = 'move_selection_previous',
+                    },
+                },
+            },
+        },
+        config = function(_, opts)
+            require('telescope').setup(opts)
+            require('telescope').load_extension('fzf')
+        end,
+    },
+    {
         -- Servers on lspconfig defaults, apart from basedpyright. clangd stays hand-rolled below:
         -- its query-driver and compile-commands flags aren't the default.
         'neovim/nvim-lspconfig',
         ft = { 'cs', 'go', 'python' },
         config = function()
+            vim.lsp.config('gopls', {
+                settings = { gopls = { symbolScope = 'workspace' } },
+            })
             -- Type checking off by default; projects opt in via [tool.basedpyright],
             -- which makes basedpyright drop every setting below.
             vim.lsp.config('basedpyright', {
@@ -112,14 +160,16 @@ vim.api.nvim_create_user_command('Clean', [[%s/\s\+$//e]], {})
 -- Dismissing is a keypress, which re-arms CursorHold, so the float would pop back.
 local diag_float_muted = false
 local diag_float_line = 0
+local diag_float_win = nil
 
-local function close_floats()
-    for _, win in ipairs(vim.api.nvim_list_wins()) do
-        if vim.api.nvim_win_get_config(win).relative ~= '' then
-            -- pcall: force=false throws on a modified float; skip it, don't abort the loop.
-            pcall(vim.api.nvim_win_close, win, false)
-        end
+-- Close only the float we opened.
+-- Sweeping every float would take Telescope's picker windows with it.
+local function close_diag_float()
+    if diag_float_win and vim.api.nvim_win_is_valid(diag_float_win) then
+        -- pcall: force=false throws on a modified float.
+        pcall(vim.api.nvim_win_close, diag_float_win, false)
     end
+    diag_float_win = nil
 end
 
 local map = vim.keymap.set
@@ -127,7 +177,7 @@ map('', ',,', '<cmd>nohlsearch<cr>')
 map('n', '<leader>r', [[:%s/\<<C-r><C-w>\>//g<Left><Left>]])
 map('n', '<leader>q', function()
     diag_float_muted = true
-    close_floats()
+    close_diag_float()
     vim.cmd('lclose | cclose')
 end)
 map('x', 'x', '"_d')
@@ -202,11 +252,14 @@ vim.api.nvim_create_autocmd({ 'CursorHold', 'DiagnosticChanged' }, {
             local cfg = vim.api.nvim_win_get_config(win)
             if cfg.relative ~= '' and cfg.focusable then return end
         end
+        -- Fixing the diagnostic makes open_float a no-op, so close the old float first.
+        close_diag_float()
         -- The default close_events fire on horizontal motion too, which flickers.
-        vim.diagnostic.open_float({
+        local _, win = vim.diagnostic.open_float({
             focusable = false,
             close_events = { 'CursorMovedI', 'InsertCharPre', 'BufLeave', 'WinLeave' },
         })
+        diag_float_win = win
         diag_float_line = vim.api.nvim_win_get_cursor(0)[1]
     end,
 })
@@ -215,7 +268,7 @@ vim.api.nvim_create_autocmd({ 'CursorHold', 'DiagnosticChanged' }, {
 vim.api.nvim_create_autocmd('CursorMoved', {
     callback = function()
         diag_float_muted = false
-        if vim.api.nvim_win_get_cursor(0)[1] ~= diag_float_line then close_floats() end
+        if vim.api.nvim_win_get_cursor(0)[1] ~= diag_float_line then close_diag_float() end
     end,
 })
 
@@ -227,7 +280,7 @@ vim.api.nvim_create_autocmd('LspAttach', {
         map('n', 'gu', vim.lsp.buf.references, o)
         map('n', 'gi', vim.lsp.buf.implementation, o)
         map('n', 'K', vim.lsp.buf.hover, o)
-        map('n', '<leader><space>', vim.lsp.buf.workspace_symbol, o)
+        map('n', '<leader><space>', picker('lsp_dynamic_workspace_symbols'), o)
         map('n', '<leader>r', vim.lsp.buf.rename, o)
         map('n', '<leader>a', vim.lsp.buf.code_action, o)
         map('n', '<leader>=', function() vim.lsp.buf.format() end, o)
