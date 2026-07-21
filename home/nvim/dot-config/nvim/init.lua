@@ -182,19 +182,19 @@ local function close_diag_float()
 end
 
 local map = vim.keymap.set
-map('', ',,', '<cmd>nohlsearch<cr>')
-map('n', '<leader>r', [[:%s/\<<C-r><C-w>\>//g<Left><Left>]])
+map('', ',,', '<cmd>nohlsearch<cr>', { desc = 'Clear search highlight' })
+map('n', '<leader>r', [[:%s/\<<C-r><C-w>\>//g<Left><Left>]], { desc = 'Substitute word under cursor' })
 map('n', '<leader>q', function()
     diag_float_muted = true
     close_diag_float()
     vim.cmd('lclose | cclose')
-end)
-map('x', 'x', '"_d')
-map('n', 'Q', '<Nop>')
-map('n', 'QQ', '<cmd>cquit<cr>')
-map('i', 'j', function() return vim.fn.pumvisible() == 1 and '<C-n>' or 'j' end, { expr = true })
-map('i', 'k', function() return vim.fn.pumvisible() == 1 and '<C-p>' or 'k' end, { expr = true })
-map('n', 'gw', [["_yiw:s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/<cr><C-o>:noh<cr>]], { silent = true })
+end, { desc = 'Dismiss diagnostic float, close quickfix and location lists' })
+map('x', 'x', '"_d', { desc = 'Delete without yanking' })
+map('n', 'Q', '<Nop>', { desc = 'Disabled, stops an accidental macro replay' })
+map('n', 'QQ', '<cmd>cquit<cr>', { desc = 'Quit with a non-zero exit code' })
+map('i', 'j', function() return vim.fn.pumvisible() == 1 and '<C-n>' or 'j' end, { expr = true, desc = 'Next completion item while the popup is open' })
+map('i', 'k', function() return vim.fn.pumvisible() == 1 and '<C-p>' or 'k' end, { expr = true, desc = 'Previous completion item while the popup is open' })
+map('n', 'gw', [["_yiw:s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/<cr><C-o>:noh<cr>]], { silent = true, desc = 'Swap word under cursor with the next one' })
 
 -- Restore cursor to last position when reopening a file.
 vim.api.nvim_create_autocmd('BufReadPost', {
@@ -284,16 +284,16 @@ vim.api.nvim_create_autocmd('CursorMoved', {
 -- Buffer-local LSP mappings, set when a server attaches.
 vim.api.nvim_create_autocmd('LspAttach', {
     callback = function(args)
-        local o = { buffer = args.buf }
-        map('n', 'gd', vim.lsp.buf.definition, o)
-        map('n', 'gu', vim.lsp.buf.references, o)
-        map('n', 'gi', vim.lsp.buf.implementation, o)
-        map('n', 'K', vim.lsp.buf.hover, o)
-        map('n', '<leader><space>', picker('lsp_dynamic_workspace_symbols'), o)
-        map('n', '<leader>r', vim.lsp.buf.rename, o)
-        map('n', '<leader>a', vim.lsp.buf.code_action, o)
-        map('n', '<leader>=', function() vim.lsp.buf.format() end, o)
-        map('n', '[d', function() vim.diagnostic.jump({ count = -1, float = true }) end, o)
-        map('n', ']d', function() vim.diagnostic.jump({ count = 1, float = true }) end, o)
+        local function buf_with_desc(desc) return { buffer = args.buf, desc = desc } end
+        map('n', 'gd', vim.lsp.buf.definition, buf_with_desc('Go to definition'))
+        map('n', 'gu', vim.lsp.buf.references, buf_with_desc('List references'))
+        map('n', 'gi', vim.lsp.buf.implementation, buf_with_desc('Go to implementation'))
+        map('n', 'K', vim.lsp.buf.hover, buf_with_desc('Hover documentation'))
+        map('n', '<leader><space>', picker('lsp_dynamic_workspace_symbols'), buf_with_desc('Workspace symbols'))
+        map('n', '<leader>r', vim.lsp.buf.rename, buf_with_desc('Rename symbol'))
+        map('n', '<leader>a', vim.lsp.buf.code_action, buf_with_desc('Code action'))
+        map('n', '<leader>=', function() vim.lsp.buf.format() end, buf_with_desc('Format buffer'))
+        map('n', '[d', function() vim.diagnostic.jump({ count = -1, float = true }) end, buf_with_desc('Previous diagnostic'))
+        map('n', ']d', function() vim.diagnostic.jump({ count = 1, float = true }) end, buf_with_desc('Next diagnostic'))
     end,
 })
