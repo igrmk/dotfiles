@@ -57,6 +57,15 @@ require('lazy').setup({
         },
     },
     {
+        'stevearc/oil.nvim',
+        -- Not lazy loaded: oil replaces netrw, so it has to be up before the first directory buffer.
+        lazy = false,
+        opts = {},
+        keys = {
+            { '-', '<cmd>Oil<cr>', desc = 'Open parent directory' },
+        },
+    },
+    {
         'nvim-telescope/telescope.nvim',
         dependencies = {
             'nvim-lua/plenary.nvim',
