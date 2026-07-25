@@ -1,5 +1,7 @@
 vim.g.mapleader = ' '
 
+require('vim._core.ui2').enable()
+
 -- Bootstrap lazy.nvim (plugin manager).
 local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
 if not vim.uv.fs_stat(lazypath) then
