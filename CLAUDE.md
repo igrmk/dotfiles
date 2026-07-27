@@ -11,6 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Don't use `+` in commit messages (write "and" or use commas)
 - Capitalize acronyms and proper nouns in commit messages (e.g., `LSP`, `Python`)
 - NEVER push to origin unless explicitly asked; committing does not imply pushing (applies to every repo, not just this one)
+- Write one comment line by default; go longer only when the reason genuinely needs it
+- Comment the non-obvious why, not what the code already says
 - Break comment lines at clause boundaries, not mid-phrase (e.g., keep a parenthetical list on one line)
 - Keep Markdown lines to 100 columns max, wrapping at clause boundaries (not mid-phrase)
 - 100 columns is an upper bound, not a target; lines often land well short of it
