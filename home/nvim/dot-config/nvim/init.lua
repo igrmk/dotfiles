@@ -99,6 +99,37 @@ require('lazy').setup({
         end,
     },
     {
+        'sindrets/diffview.nvim',
+        dependencies = { 'nvim-lua/plenary.nvim' },
+        cmd = { 'DiffviewOpen', 'DiffviewFileHistory' },
+        keys = {
+            -- HEAD^! is the commit alone, unlike HEAD~1..HEAD it also works on a merge.
+            { '<leader>gd', '<cmd>DiffviewOpen HEAD^!<cr>', desc = 'Diff latest commit' },
+            { '<leader>gs', '<cmd>DiffviewOpen<cr>', desc = 'Diff working tree' },
+            { '<leader>gl', '<cmd>DiffviewFileHistory<cr>', desc = 'Browse commit history' },
+            { '<leader>gf', '<cmd>DiffviewFileHistory %<cr>', desc = 'Browse history of current file' },
+        },
+        opts = {
+            use_icons = false,
+            -- Without this the left pane paints removals green.
+            enhanced_diff_hl = true,
+            file_panel = { win_config = { position = 'bottom', height = 16 } },
+            hooks = {
+                -- Vim uses one inline-diff colour for both panes; make it red left, green right.
+                diff_buf_win_enter = function(_, winid, ctx)
+                    local from, to = 'DiffText', 'DiffTextAdd'
+                    if ctx.symbol == 'a' then from, to = 'DiffTextAdd', 'DiffText' end
+                    local winhl = vim.tbl_filter(
+                        function(pair) return not vim.startswith(pair, from .. ':') end,
+                        vim.split(vim.wo[winid].winhighlight, ',', { trimempty = true })
+                    )
+                    table.insert(winhl, from .. ':' .. to)
+                    vim.wo[winid].winhighlight = table.concat(winhl, ',')
+                end,
+            },
+        },
+    },
+    {
         -- Servers on lspconfig defaults, apart from basedpyright. clangd stays hand-rolled below:
         -- its query-driver and compile-commands flags aren't the default.
         'neovim/nvim-lspconfig',
@@ -157,6 +188,8 @@ opt.wrap = false
 opt.mouse = 'a'
 opt.list = true
 opt.listchars = { tab = '»·', trail = '·', nbsp = '⎵' }
+-- Fold column markers; +/- read as arithmetic. Only diff mode folds, so these show up there.
+opt.fillchars:append({ foldopen = '▼', foldclose = '▶', foldsep = '│' })
 opt.clipboard = 'unnamed,unnamedplus'
 opt.swapfile = false
 -- Drives the CursorHold diagnostic float; the 4s default feels broken.
@@ -187,10 +220,15 @@ local map = vim.keymap.set
 map('', ',,', '<cmd>nohlsearch<cr>', { desc = 'Clear search highlight' })
 map('n', '<leader>r', [[:%s/\<<C-r><C-w>\>//g<Left><Left>]], { desc = 'Substitute word under cursor' })
 map('n', '<leader>q', function()
+    -- The package.loaded guard keeps this from pulling in the lazy-loaded plugin.
+    if package.loaded['diffview'] and require('diffview.lib').get_current_view() then
+        vim.cmd('DiffviewClose')
+        return
+    end
     diag_float_muted = true
     close_diag_float()
     vim.cmd('lclose | cclose')
-end, { desc = 'Dismiss diagnostic float, close quickfix and location lists' })
+end, { desc = 'Close diffview, or dismiss diagnostic float and close quickfix and location lists' })
 map('x', 'x', '"_d', { desc = 'Delete without yanking' })
 map('n', 'Q', '<Nop>', { desc = 'Disabled, stops an accidental macro replay' })
 map('n', 'QQ', '<cmd>cquit<cr>', { desc = 'Quit with a non-zero exit code' })
