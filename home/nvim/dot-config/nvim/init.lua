@@ -187,7 +187,7 @@ opt.expandtab = true
 opt.wrap = false
 opt.mouse = 'a'
 opt.list = true
-opt.listchars = { tab = '»·', trail = '·', nbsp = '⎵' }
+opt.listchars = { tab = '» ', trail = '·', nbsp = '⎵' }
 -- Fold column markers; +/- read as arithmetic. Only diff mode folds, so these show up there.
 opt.fillchars:append({ foldopen = '▼', foldclose = '▶', foldsep = '│' })
 opt.clipboard = 'unnamed,unnamedplus'
