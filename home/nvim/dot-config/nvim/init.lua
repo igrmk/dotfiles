@@ -109,6 +109,16 @@ require('lazy').setup({
             { '<leader>gl', '<cmd>DiffviewFileHistory<cr>', desc = 'Browse commit history' },
             { '<leader>gf', '<cmd>DiffviewFileHistory %<cr>', desc = 'Browse history of current file' },
         },
+        -- The commit log float, opened with L, is the only panel with no close mapping of its own.
+        init = function()
+            vim.api.nvim_create_autocmd('BufWinEnter', {
+                pattern = 'diffview://*/commit_log',
+                callback = function(ev)
+                    local o = { buffer = ev.buf, desc = 'Close the commit log' }
+                    vim.keymap.set('n', 'q', '<cmd>close<cr>', o)
+                end,
+            })
+        end,
         opts = {
             use_icons = false,
             -- Without this the left pane paints removals green.
