@@ -246,6 +246,10 @@ map('n', 'QQ', '<cmd>cquit<cr>', { desc = 'Quit with a non-zero exit code' })
 map('i', 'j', function() return vim.fn.pumvisible() == 1 and '<C-n>' or 'j' end, { expr = true, desc = 'Next completion item while the popup is open' })
 map('i', 'k', function() return vim.fn.pumvisible() == 1 and '<C-p>' or 'k' end, { expr = true, desc = 'Previous completion item while the popup is open' })
 map('n', 'gw', [["_yiw:s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/<cr><C-o>:noh<cr>]], { silent = true, desc = 'Swap word under cursor with the next one' })
+map('n', '<C-h>', '<C-w>h', { desc = 'Go to the window on the left' })
+map('n', '<C-j>', '<C-w>j', { desc = 'Go to the window below' })
+map('n', '<C-k>', '<C-w>k', { desc = 'Go to the window above' })
+map('n', '<C-l>', '<C-w>l', { desc = 'Go to the window on the right' })
 
 -- Quickfix and location lists are picked from, so mark the row the cursor is on.
 vim.api.nvim_create_autocmd('FileType', {
