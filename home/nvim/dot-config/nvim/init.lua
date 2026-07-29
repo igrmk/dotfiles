@@ -247,6 +247,12 @@ map('i', 'j', function() return vim.fn.pumvisible() == 1 and '<C-n>' or 'j' end,
 map('i', 'k', function() return vim.fn.pumvisible() == 1 and '<C-p>' or 'k' end, { expr = true, desc = 'Previous completion item while the popup is open' })
 map('n', 'gw', [["_yiw:s/\(\%#\w\+\)\(\_W\+\)\(\w\+\)/\3\2\1/<cr><C-o>:noh<cr>]], { silent = true, desc = 'Swap word under cursor with the next one' })
 
+-- Quickfix and location lists are picked from, so mark the row the cursor is on.
+vim.api.nvim_create_autocmd('FileType', {
+    pattern = 'qf',
+    callback = function() vim.wo.cursorline = true end,
+})
+
 -- Restore cursor to last position when reopening a file.
 vim.api.nvim_create_autocmd('BufReadPost', {
     callback = function()
