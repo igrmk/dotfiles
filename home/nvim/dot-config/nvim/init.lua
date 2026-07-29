@@ -24,6 +24,36 @@ local function picker(name)
     return function() require('telescope.builtin')[name]() end
 end
 
+local function diffview_action(name)
+    return function() require('diffview.actions')[name]() end
+end
+
+-- Walk the file panel with a preview: open the diff for the entry, but stay in the panel.
+-- Each load runs a git job, and a keypress arriving mid-load tears the half-built buffer down,
+-- which diffview reports as a failed diff buffer, so the load waits for the cursor to settle.
+local preview_generation = 0
+local function diffview_preview(move)
+    return function()
+        require('diffview.actions')[move]()
+        preview_generation = preview_generation + 1
+        local generation = preview_generation
+        vim.defer_fn(function()
+            if generation ~= preview_generation then return end
+            local view = require('diffview.lib').get_current_view()
+            -- Focus left the panel, so <cr> or <leader>e has already opened what it wanted.
+            if not view or vim.api.nvim_get_current_win() ~= view.panel.winid then return end
+            local item = view.panel:get_item_at_cursor()
+            -- A directory in the file tree, or a commit in a multi-file log, folds instead of opening,
+            -- and folding on every j would make the panel unusable.
+            local folds = item ~= nil
+                and (type(item.collapsed) == 'boolean' or (item.files ~= nil and not view.panel.single_file))
+            if item and not folds then
+                require('diffview.actions').select_entry()
+            end
+        end, 80)
+    end
+end
+
 require('lazy').setup({
     {
         'igrmk/kull-vim',
@@ -124,6 +154,19 @@ require('lazy').setup({
             -- Without this the left pane paints removals green.
             enhanced_diff_hl = true,
             file_panel = { win_config = { position = 'bottom', height = 16 } },
+            -- Merged over the defaults by lhs, so the rest of the panel keymaps stay.
+            keymaps = {
+                file_panel = {
+                    { 'n', 'j', diffview_preview('next_entry'), { desc = 'Preview the next file entry' } },
+                    { 'n', 'k', diffview_preview('prev_entry'), { desc = 'Preview the previous file entry' } },
+                    { 'n', '<cr>', diffview_action('focus_entry'), { desc = 'Focus the diff for the entry' } },
+                },
+                file_history_panel = {
+                    { 'n', 'j', diffview_preview('next_entry'), { desc = 'Preview the next entry' } },
+                    { 'n', 'k', diffview_preview('prev_entry'), { desc = 'Preview the previous entry' } },
+                    { 'n', '<cr>', diffview_action('focus_entry'), { desc = 'Focus the diff for the entry' } },
+                },
+            },
             hooks = {
                 -- Vim uses one inline-diff colour for both panes; make it red left, green right.
                 diff_buf_win_enter = function(_, winid, ctx)
