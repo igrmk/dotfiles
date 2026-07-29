@@ -229,7 +229,7 @@ end
 local map = vim.keymap.set
 map('', ',,', '<cmd>nohlsearch<cr>', { desc = 'Clear search highlight' })
 map('n', '<leader>r', [[:%s/\<<C-r><C-w>\>//g<Left><Left>]], { desc = 'Substitute word under cursor' })
-map('n', '<leader>q', function()
+map('n', 'q', function()
     -- The package.loaded guard keeps this from pulling in the lazy-loaded plugin.
     if package.loaded['diffview'] and require('diffview.lib').get_current_view() then
         vim.cmd('DiffviewClose')
@@ -239,6 +239,7 @@ map('n', '<leader>q', function()
     close_diag_float()
     vim.cmd('lclose | cclose')
 end, { desc = 'Close diffview, or dismiss diagnostic float and close quickfix and location lists' })
+map('n', '<leader>q', 'q', { desc = 'Record or stop a macro' })
 map('x', 'x', '"_d', { desc = 'Delete without yanking' })
 map('n', 'Q', '<Nop>', { desc = 'Disabled, stops an accidental macro replay' })
 map('n', 'QQ', '<cmd>cquit<cr>', { desc = 'Quit with a non-zero exit code' })

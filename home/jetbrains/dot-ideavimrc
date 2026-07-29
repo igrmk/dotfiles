@@ -62,6 +62,7 @@ nmap <leader>m <Action>(Move)
 map ,v <Action>(BuildProject)
 map <c-z> <Action>(ToggleDistractionFreeMode)
 map q <Action>(ActivateProjectToolWindow)
+nnoremap <leader>q q
 nnoremap <leader>$ :source ~/.ideavimrc<CR>
 nnoremap <Leader>mm :action ToggleBookmark<CR>
 nnoremap <Leader>ml :action ShowBookmarks<CR>
