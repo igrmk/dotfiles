@@ -30,7 +30,8 @@ end
 
 -- Walk the file panel with a preview: open the diff for the entry, but stay in the panel.
 -- Each load runs a git job, and a keypress arriving mid-load tears the half-built buffer down,
--- which diffview reports as a failed diff buffer, so the load waits for the cursor to settle.
+-- which Diffview reports as a failed diff buffer.
+-- So the load waits for the cursor to settle.
 local preview_generation = 0
 local function diffview_preview(move)
     return function()
@@ -43,7 +44,7 @@ local function diffview_preview(move)
             -- Focus left the panel, so <cr> or <leader>e has already opened what it wanted.
             if not view or vim.api.nvim_get_current_win() ~= view.panel.winid then return end
             local item = view.panel:get_item_at_cursor()
-            -- A directory in the file tree, or a commit in a multi-file log, folds instead of opening,
+            -- A directory in the tree, or a commit in a multi-file log, folds instead of opening,
             -- and folding on every j would make the panel unusable.
             local folds = item ~= nil
                 and (type(item.collapsed) == 'boolean' or (item.files ~= nil and not view.panel.single_file))
@@ -253,6 +254,8 @@ opt.langmap = 'ФИСВУАПРШОЛДЬТЩЗЙКЫЕГМЦЧНЯ;ABCDEFGHIJKL
 
 vim.api.nvim_create_user_command('Sudow', 'w !sudo tee % >/dev/null', {})
 vim.api.nvim_create_user_command('Clean', [[%s/\s\+$//e]], {})
+
+require('wink').setup()
 
 -- Dismissing is a keypress, which re-arms CursorHold, so the float would pop back.
 local diag_float_muted = false
