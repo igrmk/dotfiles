@@ -1,0 +1,2 @@
+# SOPS looks for the age key under ~/Library/Application Support on macOS; keep it at the XDG path.
+export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
