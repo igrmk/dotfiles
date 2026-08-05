@@ -313,6 +313,16 @@ vim.api.nvim_create_autocmd('BufReadPost', {
     end,
 })
 
+-- Distro clangd packages are versioned and the unversioned symlink lags behind; prefer the newest.
+-- Homebrew ships the unversioned name only, hence the fallback.
+local function clangd_bin()
+    for v = 25, 19, -1 do
+        local bin = 'clangd-' .. v
+        if vim.fn.executable(bin) == 1 then return bin end
+    end
+    return 'clangd'
+end
+
 -- Markers that only ever sit at a project root, unlike CMakeLists.txt.
 local function cpp_root(path)
     local marker = vim.fs.find(
@@ -336,7 +346,7 @@ vim.api.nvim_create_autocmd('FileType', {
     pattern = { 'c', 'cpp' },
     callback = function(args)
         local root = cpp_root(vim.api.nvim_buf_get_name(args.buf))
-        local cmd = { 'clangd', '--query-driver=/usr/bin/g++*,/usr/bin/gcc*' }
+        local cmd = { clangd_bin(), '--query-driver=/usr/bin/g++*,/usr/bin/gcc*' }
         -- clangd's own search skips nested build dirs; point it at compile_commands.json.
         if root then
             for _, sub in ipairs({ 'build/Debug', 'build/Release', 'build' }) do
