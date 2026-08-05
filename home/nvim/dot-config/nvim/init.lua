@@ -313,15 +313,29 @@ vim.api.nvim_create_autocmd('BufReadPost', {
     end,
 })
 
+-- Markers that only ever sit at a project root, unlike CMakeLists.txt.
+local function cpp_root(path)
+    local marker = vim.fs.find(
+        { 'compile_commands.json', '.clangd', 'conanfile.py', 'conanfile.txt', '.git' },
+        { upward = true, path = path }
+    )[1]
+    if marker then return vim.fs.dirname(marker) end
+    -- Plain CMake project: subdirectories have CMakeLists.txt too, so climb to the topmost one.
+    local found = vim.fs.find('CMakeLists.txt', { upward = true, path = path })[1]
+    if not found then return nil end
+    local dir = vim.fs.dirname(found)
+    while true do
+        local parent = vim.fs.dirname(dir)
+        if parent == dir or not vim.uv.fs_stat(parent .. '/CMakeLists.txt') then return dir end
+        dir = parent
+    end
+end
+
 -- C/C++ LSP via built-in client (no plugins). clangd + GCC query-driver.
 vim.api.nvim_create_autocmd('FileType', {
     pattern = { 'c', 'cpp' },
     callback = function(args)
-        local marker = vim.fs.find(
-            { 'compile_commands.json', '.clangd', 'conanfile.py', 'conanfile.txt', 'CMakeLists.txt', '.git' },
-            { upward = true, path = vim.api.nvim_buf_get_name(args.buf) }
-        )[1]
-        local root = marker and vim.fs.dirname(marker) or nil
+        local root = cpp_root(vim.api.nvim_buf_get_name(args.buf))
         local cmd = { 'clangd', '--query-driver=/usr/bin/g++*,/usr/bin/gcc*' }
         -- clangd's own search skips nested build dirs; point it at compile_commands.json.
         if root then
