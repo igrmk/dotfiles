@@ -55,7 +55,8 @@ local function diffview_preview(move)
     end
 end
 
--- Review the current branch on its own: everything it has added since it forked.
+-- Review the current branch on its own: everything it has added since it forked,
+-- uncommitted work included.
 -- The fork point is discovered rather than named, because the parent is not always the trunk,
 -- and the trunk is not always called main.
 local function diffview_branch()
@@ -116,13 +117,15 @@ local function diffview_branch()
     -- On the trunk nothing was forked from, so fall back to what the upstream has not seen.
     base = base or git({ 'merge-base', 'HEAD', '@{upstream}' })[1]
 
-    if base and base ~= head then
-        vim.cmd('DiffviewOpen ' .. base .. '..HEAD')
-    elseif base == head then
+    -- A single rev diffs the working tree, not HEAD:
+    -- a fix for the branch counts before it is committed.
+    if not base then
+        vim.notify('No fork point found', vim.log.levels.WARN)
+    elseif base ~= head or vim.system({ 'git', 'diff', '--quiet', 'HEAD' }):wait().code ~= 0 then
+        vim.cmd('DiffviewOpen ' .. base)
+    else
         vim.notify(on_trunk and 'Nothing unpushed on ' .. branch or 'This branch adds no commits',
             vim.log.levels.INFO)
-    else
-        vim.notify('No fork point found', vim.log.levels.WARN)
     end
 end
 
