@@ -55,6 +55,77 @@ local function diffview_preview(move)
     end
 end
 
+-- Review the current branch on its own: everything it has added since it forked.
+-- The fork point is discovered rather than named, because the parent is not always the trunk,
+-- and the trunk is not always called main.
+local function diffview_branch()
+    local function git(args)
+        local res = vim.system(vim.list_extend({ 'git' }, args), { text = true }):wait()
+        if res.code ~= 0 then return {} end
+        return vim.split(vim.trim(res.stdout), '\n', { trimempty = true })
+    end
+
+    local head = git({ 'rev-parse', 'HEAD' })[1]
+    if not head then
+        vim.notify('Not in a git repository', vim.log.levels.WARN)
+        return
+    end
+
+    -- Empty on a detached HEAD, where nothing needs excluding by name.
+    local branch = git({ 'symbolic-ref', '--short', '-q', 'HEAD' })[1] or ''
+
+    -- A ref containing HEAD is this branch or is stacked on it, so it marks no fork point.
+    local candidates = {}
+    for _, ref in ipairs(git({ 'for-each-ref', '--no-contains', 'HEAD',
+        '--format=%(refname)', 'refs/heads', 'refs/remotes' })) do
+        -- This branch pushed to a remote trails HEAD without being what it forked from.
+        if ref ~= 'refs/heads/' .. branch and ref:match('^refs/remotes/[^/]+/(.*)$') ~= branch then
+            table.insert(candidates, ref)
+        end
+    end
+
+    -- An old merged branch left behind looks exactly like a parent branch,
+    -- so on the trunk skip the search: it forked from nothing.
+    local on_trunk = false
+    for _, head_ref in ipairs(git({ 'for-each-ref', '--format=%(symref:short)', 'refs/remotes/*/HEAD' })) do
+        on_trunk = on_trunk or head_ref:match('^[^/]+/(.*)$') == branch
+    end
+
+    local base
+    if not on_trunk and #candidates > 0 then
+        local forks = {}
+        for _, line in ipairs(git(vim.list_extend({ 'rev-list', '--boundary', 'HEAD', '--not' }, candidates))) do
+            local sha = line:match('^%-(%x+)$')
+            if sha then table.insert(forks, sha) end
+        end
+        -- Merging the parent back in leaves several fork points; the one nearest HEAD is the branch.
+        for _, a in ipairs(forks) do
+            local nearest = true
+            for _, b in ipairs(forks) do
+                if a ~= b and vim.system({ 'git', 'merge-base', '--is-ancestor', a, b }):wait().code == 0 then
+                    nearest = false
+                    break
+                end
+            end
+            if nearest then
+                base = a
+                break
+            end
+        end
+    end
+    -- On the trunk nothing was forked from, so fall back to what the upstream has not seen.
+    base = base or git({ 'merge-base', 'HEAD', '@{upstream}' })[1]
+
+    if base and base ~= head then
+        vim.cmd('DiffviewOpen ' .. base .. '..HEAD')
+    elseif base == head then
+        vim.notify(on_trunk and 'Nothing unpushed on ' .. branch or 'This branch adds no commits',
+            vim.log.levels.INFO)
+    else
+        vim.notify('No fork point found', vim.log.levels.WARN)
+    end
+end
+
 require('lazy').setup({
     {
         'igrmk/kull-vim',
@@ -137,6 +208,7 @@ require('lazy').setup({
             -- HEAD^! is the commit alone, unlike HEAD~1..HEAD it also works on a merge.
             { '<leader>gd', '<cmd>DiffviewOpen HEAD^!<cr>', desc = 'Diff latest commit' },
             { '<leader>gs', '<cmd>DiffviewOpen<cr>', desc = 'Diff working tree' },
+            { '<leader>gb', diffview_branch, desc = 'Diff current branch since it forked' },
             { '<leader>gl', '<cmd>DiffviewFileHistory<cr>', desc = 'Browse commit history' },
             { '<leader>gf', '<cmd>DiffviewFileHistory %<cr>', desc = 'Browse history of current file' },
         },
