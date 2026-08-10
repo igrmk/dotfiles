@@ -348,11 +348,16 @@ local function close_diag_float()
 end
 
 local map = vim.keymap.set
+
+-- The package.loaded guard keeps this from pulling in the lazy-loaded plugin.
+local function in_diffview()
+    return package.loaded['diffview'] and require('diffview.lib').get_current_view() ~= nil
+end
+
 map('', ',,', '<cmd>nohlsearch<cr>', { desc = 'Clear search highlight' })
 map('n', '<leader>r', [[:%s/\<<C-r><C-w>\>//g<Left><Left>]], { desc = 'Substitute word under cursor' })
 map('n', 'q', function()
-    -- The package.loaded guard keeps this from pulling in the lazy-loaded plugin.
-    if package.loaded['diffview'] and require('diffview.lib').get_current_view() then
+    if in_diffview() then
         vim.cmd('DiffviewClose')
         return
     end
@@ -371,6 +376,22 @@ map('n', '<C-h>', '<C-w>h', { desc = 'Go to the window on the left' })
 map('n', '<C-j>', '<C-w>j', { desc = 'Go to the window below' })
 map('n', '<C-k>', '<C-w>k', { desc = 'Go to the window above' })
 map('n', '<C-l>', '<C-w>l', { desc = 'Go to the window on the right' })
+
+-- One pair for anything list-like: diffview entries, else this window's location list, else quickfix.
+local function list_jump(step, wrap, diffview_action)
+    return function()
+        if in_diffview() then
+            require('diffview.actions')[diffview_action]()
+            return
+        end
+        local prefix = vim.fn.getloclist(0, { size = 0 }).size > 0 and 'l' or 'c'
+        -- Stepping past either end errors, so wrap around instead.
+        if not pcall(vim.cmd, prefix .. step) then pcall(vim.cmd, prefix .. wrap) end
+    end
+end
+
+map('n', ']l', list_jump('next', 'first', 'select_next_entry'), { desc = 'Next diffview, location, or quickfix entry' })
+map('n', '[l', list_jump('previous', 'last', 'select_prev_entry'), { desc = 'Previous diffview, location, or quickfix entry' })
 
 -- Quickfix and location lists are picked from, so mark the row the cursor is on.
 vim.api.nvim_create_autocmd('FileType', {
