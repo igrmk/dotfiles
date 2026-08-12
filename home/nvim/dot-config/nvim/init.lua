@@ -167,7 +167,11 @@ require('lazy').setup({
         'stevearc/oil.nvim',
         -- Not lazy loaded: oil replaces netrw, so it has to be up before the first directory buffer.
         lazy = false,
-        opts = {},
+        opts = {
+            keymaps = {
+                q = { 'actions.close', mode = 'n' },
+            },
+        },
         keys = {
             { '-', '<cmd>Oil<cr>', desc = 'Open parent directory' },
         },
@@ -354,6 +358,14 @@ local function in_diffview()
     return package.loaded['diffview'] and require('diffview.lib').get_current_view() ~= nil
 end
 
+-- Location list windows report a quickfix buftype too, so this covers both.
+local function list_win_open()
+    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+        if vim.bo[vim.api.nvim_win_get_buf(win)].buftype == 'quickfix' then return true end
+    end
+    return false
+end
+
 map('', ',,', '<cmd>nohlsearch<cr>', { desc = 'Clear search highlight' })
 map('n', '<leader>r', [[:%s/\<<C-r><C-w>\>//g<Left><Left>]], { desc = 'Substitute word under cursor' })
 map('n', 'q', function()
@@ -361,10 +373,15 @@ map('n', 'q', function()
         vim.cmd('DiffviewClose')
         return
     end
+    local float_open = diag_float_win and vim.api.nvim_win_is_valid(diag_float_win)
+    if not float_open and not list_win_open() then
+        vim.cmd('Oil')
+        return
+    end
     diag_float_muted = true
     close_diag_float()
     vim.cmd('lclose | cclose')
-end, { desc = 'Close diffview, or dismiss diagnostic float and close quickfix and location lists' })
+end, { desc = 'Close diffview, diagnostic float, quickfix and location lists, or open oil' })
 map('n', '<leader>q', 'q', { desc = 'Record or stop a macro' })
 map('x', 'x', '"_d', { desc = 'Delete without yanking' })
 map('n', 'Q', '<Nop>', { desc = 'Disabled, stops an accidental macro replay' })
