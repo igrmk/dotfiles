@@ -3,5 +3,4 @@
 # Re-run to install missing tools or upgrade them to the latest release.
 set -euo pipefail
 
-cargo install tree-sitter-cli
 cargo install --git https://github.com/igrmk/delta --branch local git-delta
