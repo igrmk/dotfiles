@@ -22,7 +22,6 @@ if command -v micromamba >/dev/null 2>&1; then
 fi
 
 zplug romkatv/powerlevel10k, as:theme, depth:1
-zplug igrmk/cavez
 
 if ! zplug check --verbose; then
 	printf "Install? [y/N]: "
