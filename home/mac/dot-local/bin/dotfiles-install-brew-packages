@@ -76,7 +76,6 @@ formulae=(
 	libsvg-cairo
 	logcli
 	magic-wormhole
-	micromamba
 	mongosh
 	mono
 	mupdf

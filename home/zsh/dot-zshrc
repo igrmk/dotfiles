@@ -11,16 +11,6 @@ for file in ~/.source.d/*; do
 	[[ -f "$file" && -r "$file" ]] && source "$file"
 done
 
-# This must precede "zplug load", otherwise CAVEZ cannot initialise a newly opened tab.
-# The export below is for reference; it actually coincides with the default:
-# https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html
-export MAMBA_ROOT_PREFIX="$HOME/micromamba"
-export CAVEZ_CONDA_FLAVOUR=micromamba
-
-if command -v micromamba >/dev/null 2>&1; then
-	eval "$(micromamba shell hook --shell=zsh)"
-fi
-
 zplug romkatv/powerlevel10k, as:theme, depth:1
 
 if ! zplug check --verbose; then
