@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Install the Python CLI tools kept on this machine (via uv).
+# Re-run to install missing tools or upgrade the unpinned ones to the latest release.
+set -euo pipefail
+
+pinned=(
+	clang-format==22.1.4
+	conan==2.15.1
+	poetry==1.8.5
+)
+
+unpinned=(
+	basedpyright
+	cmakelang
+	mypy
+	pyrasite
+	ruff
+	toml-cli
+)
+
+for t in "${pinned[@]}" "${unpinned[@]}"; do
+	uv tool install --upgrade "$t"
+done
