@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Replace the kitty icon with twiskers, following the official FAQ:
+# https://sw.kovidgoyal.net/kitty/faq/#i-do-not-like-the-kitty-icon
+# Re-run to pull a fresh copy of the icon or to repair a lost desktop entry.
+set -euo pipefail
+
+icons_url=https://github.com/igrmk/twiskers/raw/main/icon
+config_dir="${KITTY_CONFIG_DIRECTORY:-$HOME/.config/kitty}"
+
+fetch() {
+	curl --fail --silent --show-error --location --output "$2" "$1"
+}
+
+install_macos() {
+	# kitty picks kitty.app.icns up from the config directory on startup.
+	install -d -m 700 "$config_dir"
+	fetch "$icons_url/twiskers.icns" "$config_dir/kitty.app.icns"
+	echo "installed $config_dir/kitty.app.icns"
+
+	# The Dock caches icons, so it keeps drawing the old one until told otherwise.
+	rm -f /var/folders/*/*/*/com.apple.dock.iconcache
+	killall Dock
+	echo "restarted the Dock"
+}
+
+install_linux() {
+	# kitty picks kitty.app.png up from the config directory on startup.
+	# This only covers the window icon, and Wayland compositors may ignore even that,
+	# hence the desktop entry below for the launcher and the dock.
+	install -d -m 700 "$config_dir"
+	fetch "$icons_url/twiskers-256x256.png" "$config_dir/kitty.app.png"
+	echo "installed $config_dir/kitty.app.png"
+
+	local icon_path="$HOME/.local/share/icons/twiskers.svg"
+	install -d -m 700 "$(dirname "$icon_path")"
+	fetch "$icons_url/twiskers.svg" "$icon_path"
+	echo "installed $icon_path"
+
+	local source_entry
+	for dir in /usr/share/applications /usr/local/share/applications /var/lib/snapd/desktop/applications; do
+		[ -f "$dir/kitty.desktop" ] && source_entry="$dir/kitty.desktop" && break
+	done
+	if [ -z "${source_entry:-}" ]; then
+		echo "no kitty.desktop found to copy, leaving the launcher icon alone" >&2
+		return
+	fi
+
+	# The Icon key must be an absolute path, otherwise it is looked up in the icon theme.
+	local user_entry="$HOME/.local/share/applications/kitty.desktop"
+	install -d -m 700 "$(dirname "$user_entry")"
+	sed "s|^Icon=.*|Icon=$icon_path|" "$source_entry" > "$user_entry"
+	echo "installed $user_entry pointing at $icon_path"
+
+	if command -v update-desktop-database >/dev/null 2>&1; then
+		update-desktop-database "$(dirname "$user_entry")"
+	fi
+}
+
+case "$(uname -s)" in
+	Darwin) install_macos ;;
+	Linux) install_linux ;;
+	*) echo "unsupported platform: $(uname -s)" >&2; exit 1 ;;
+esac
