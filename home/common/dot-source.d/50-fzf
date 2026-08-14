@@ -1,0 +1,7 @@
+export FZF_DEFAULT_COMMAND="rg --files"
+
+if command -v fdfind >/dev/null 2>&1; then
+	export FZF_ALT_C_COMMAND="fdfind -t d . ."
+elif command -v fd >/dev/null 2>&1; then
+	export FZF_ALT_C_COMMAND="fd -t d . ."
+fi

@@ -82,8 +82,8 @@ if [ -f "$HOME/google-cloud-sdk/path.zsh.inc" ]; then . "$HOME/google-cloud-sdk/
 if [ -f "$HOME/google-cloud-sdk/completion.zsh.inc" ]; then . "$HOME/google-cloud-sdk/completion.zsh.inc"; fi
 
 # fzf setup with custom vim mode bindings
-if [[ -f ~/.fzf.zsh ]]; then
-	source ~/.fzf.zsh
+if command -v fzf >/dev/null 2>&1; then
+	eval "$(fzf --zsh)"
 	# Remove default Alt-C binding
 	bindkey -r -M emacs '\ec'
 	bindkey -r -M vicmd '\ec'

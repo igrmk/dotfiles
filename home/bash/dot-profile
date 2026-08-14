@@ -21,8 +21,6 @@ JAVA_HOME="/usr/lib/jvm/java-9-oracle"
 ANDROID_SDK_ROOT="$HOME/Android/Sdk"
 ANDROID_HOME="$ANDROID_SDK_ROOT"
 export XCURSOR_SIZE=16
-export FZF_DEFAULT_COMMAND="rg --files"
-export FZF_ALT_C_COMMAND="fd -t d . ."
 
 # use sh syntax instead of bash due to lightdm-session
 [ -n "$BASH_VERSION" ] && [ -f "$HOME/.bashrc" ] && . "$HOME/.bashrc" || prlog "refuse to load .bashrc"
