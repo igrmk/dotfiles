@@ -5,7 +5,7 @@
 #   brew leaves --installed-on-request   # top-level formulae
 #   brew list --cask                     # casks
 # The Docker stack (colima, docker, docker-buildx) is listed here too, but
-# install-colima additionally wires the buildx plugin, so run that afterwards.
+# dotfiles-install-colima additionally wires the buildx plugin, so run that afterwards.
 set -euo pipefail
 
 # Third-party taps required by some items below.
@@ -142,7 +142,7 @@ formulae=(
 )
 
 # Docker Desktop casks (docker, docker-desktop) are intentionally left out;
-# this machine uses Colima instead (see install-colima).
+# this machine uses Colima instead (see dotfiles-install-colima).
 casks=(
 	adobe-acrobat-reader
 	anaconda

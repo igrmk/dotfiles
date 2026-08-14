@@ -27,9 +27,9 @@ that has the tool:
 
 1. System packages (`apt` on Linux)
 2. Homebrew (macOS)
-3. Snap (Linux — see `home/linux/dot-local/bin/install-snaps`)
+3. Snap (Linux — see `home/linux/dot-local/bin/dotfiles-install-snaps`)
 4. `uv tool install` (Python CLIs and language servers)
-5. `cargo install` (Rust CLIs — see `home/linux/dot-local/bin/install-cargo`)
+5. `cargo install` (Rust CLIs — see `home/linux/dot-local/bin/dotfiles-install-cargo-packages`)
 6. `npm install -g` (node-only tools, last resort)
 
 Avoid `curl | sh` installers and other ad-hoc global installs when a listed manager has the tool.
