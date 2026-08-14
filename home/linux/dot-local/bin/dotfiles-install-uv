@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Install uv (the Python package manager and tool installer).
+# Not in apt or snap, and I don't like the alternatives:
+# pip dirties the Python env, pipx is not installed by default, cargo recompiles it from source.
+set -euo pipefail
+
+if command -v uv &>/dev/null; then
+	uv self update
+else
+	curl -LsSf https://astral.sh/uv/install.sh | sh
+fi
