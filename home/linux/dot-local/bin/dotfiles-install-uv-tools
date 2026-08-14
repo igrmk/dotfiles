@@ -5,7 +5,7 @@ set -euo pipefail
 
 pinned=(
 	clang-format==22.1.4
-	conan==2.15.1
+	conan==2.30.0
 	poetry==1.8.5
 )
 
