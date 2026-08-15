@@ -55,17 +55,18 @@ local function diffview_preview(move)
     end
 end
 
+-- Output lines of a git command, empty when it fails.
+local function git(args)
+    local res = vim.system(vim.list_extend({ 'git' }, args), { text = true }):wait()
+    if res.code ~= 0 then return {} end
+    return vim.split(vim.trim(res.stdout), '\n', { trimempty = true })
+end
+
 -- Review the current branch on its own: everything it has added since it forked,
 -- uncommitted work included.
 -- The fork point is discovered rather than named, because the parent is not always the trunk,
 -- and the trunk is not always called main.
 local function diffview_branch()
-    local function git(args)
-        local res = vim.system(vim.list_extend({ 'git' }, args), { text = true }):wait()
-        if res.code ~= 0 then return {} end
-        return vim.split(vim.trim(res.stdout), '\n', { trimempty = true })
-    end
-
     local head = git({ 'rev-parse', 'HEAD' })[1]
     if not head then
         vim.notify('Not in a git repository', vim.log.levels.WARN)
@@ -126,6 +127,30 @@ local function diffview_branch()
     else
         vim.notify(on_trunk and 'Nothing unpushed on ' .. branch or 'This branch adds no commits',
             vim.log.levels.INFO)
+    end
+end
+
+-- Review everything the branch adds over the trunk, stacked parents included,
+-- which is what a merge request ends up showing.
+local function diffview_default()
+    local head = git({ 'rev-parse', 'HEAD' })[1]
+    if not head then
+        vim.notify('Not in a git repository', vim.log.levels.WARN)
+        return
+    end
+
+    -- The remote's HEAD names the trunk; with no remote to ask, guessing the name would only mislead.
+    local trunk = git({ 'for-each-ref', '--format=%(symref:short)', 'refs/remotes/*/HEAD' })[1]
+
+    local base = trunk and git({ 'merge-base', 'HEAD', trunk })[1]
+    -- A single rev diffs the working tree, not HEAD:
+    -- a fix for the branch counts before it is committed.
+    if not base then
+        vim.notify('No default branch found', vim.log.levels.WARN)
+    elseif base ~= head or vim.system({ 'git', 'diff', '--quiet', 'HEAD' }):wait().code ~= 0 then
+        vim.cmd('DiffviewOpen ' .. base)
+    else
+        vim.notify('Nothing since ' .. trunk, vim.log.levels.INFO)
     end
 end
 
@@ -216,6 +241,7 @@ require('lazy').setup({
             { '<leader>gd', '<cmd>DiffviewOpen HEAD^!<cr>', desc = 'Diff latest commit' },
             { '<leader>gs', '<cmd>DiffviewOpen<cr>', desc = 'Diff working tree' },
             { '<leader>gb', diffview_branch, desc = 'Diff current branch since it forked' },
+            { '<leader>gm', diffview_default, desc = 'Diff current branch since the default branch' },
             { '<leader>gl', '<cmd>DiffviewFileHistory<cr>', desc = 'Browse commit history' },
             { '<leader>gf', '<cmd>DiffviewFileHistory %<cr>', desc = 'Browse history of current file' },
         },
