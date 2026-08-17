@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Write one comment line by default; go longer only when the reason genuinely needs it
 - Comment the non-obvious why, not what the code already says
 - Break comment lines at clause boundaries, not mid-phrase (e.g., keep a parenthetical list on one line)
-- Keep Markdown lines to 100 columns max, wrapping at clause boundaries (not mid-phrase)
+- Keep Markdown and comment lines to 100 columns, wrapping at clause boundaries (not mid-phrase)
 - 100 columns is an upper bound, not a target; lines often land well short of it
 - Pick break points by grammar, not by width
 - Break where speech pauses longest: sentence end, then comma, then phrase boundary
