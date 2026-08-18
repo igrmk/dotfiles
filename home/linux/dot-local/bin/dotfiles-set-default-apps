@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+xdg-mime default google-chrome.desktop \
+	text/html \
+	x-scheme-handler/http \
+	x-scheme-handler/https \
+	x-scheme-handler/about \
+	x-scheme-handler/unknown
+
+xdg-mime default org.gnome.Evince.desktop application/pdf
+
+xdg-mime default org.keepassxc.KeePassXC.desktop application/x-keepass2
