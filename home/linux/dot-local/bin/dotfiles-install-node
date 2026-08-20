@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Install fnm (the node version manager) and the node LTS it manages.
+# Re-run to upgrade both.
+# fnm rather than apt's nodejs and npm, which lag upstream and cannot be switched per project.
+set -euo pipefail
+
+cargo install --locked fnm
+
+eval "$(fnm env --shell bash)"
+
+fnm install --lts
+fnm use lts-latest
+fnm default lts-latest

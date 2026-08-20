@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Install the node CLI tools kept on this machine (via npm).
+# Re-run to install missing tools or upgrade them to the latest release.
+set -euo pipefail
+
+packages=(
+	@mermaid-js/mermaid-cli
+)
+
+eval "$(fnm env --shell bash)"
+
+# By default npm installs global tools inside the node, so they drop off PATH on a node switch.
+if [ "$(npm config get prefix)" != "$HOME/.npm" ]; then
+	echo "npm is not stowed" >&2
+	exit 1
+fi
+
+# Silence npm's warning: it really downloads nothing while PUPPETEER_EXECUTABLE_PATH is set.
+npm install -g --allow-scripts=puppeteer "${packages[@]}"
