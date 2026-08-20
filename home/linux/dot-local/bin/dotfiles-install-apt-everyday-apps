@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+packages=(
+	evince
+	keepassxc
+	kitty
+	meld
+	mpv
+	ubuntu-restricted-addons
+)
+
+third_party_packages=(
+	google-chrome-stable https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+	1password            https://downloads.1password.com/linux/debian/amd64/stable/1password-latest.deb
+)
+
+install_third_party_deb() {
+	local name=$1 url=$2
+	if dpkg -s "$name" &>/dev/null; then
+		echo "$name already installed"
+		return
+	fi
+	local deb
+	deb=$(mktemp --suffix=.deb)
+	curl -fsSL "$url" -o "$deb"
+	sudo apt-get install -y "$deb"
+	rm -f "$deb"
+}
+
+sudo apt-get install -y "${packages[@]}"
+
+for ((i = 0; i < ${#third_party_packages[@]}; i += 2)); do
+	install_third_party_deb "${third_party_packages[i]}" "${third_party_packages[i + 1]}"
+done
+
+echo Installed:
+printf '\t%s\n' "${packages[@]}"
+for ((i = 0; i < ${#third_party_packages[@]}; i += 2)); do
+	printf '\t%s\n' "${third_party_packages[i]}"
+done

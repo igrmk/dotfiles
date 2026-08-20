@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+packages=(
+	fonts-inter
+	fonts-jetbrains-mono
+)
+
+sudo apt-get install -y "${packages[@]}"
+
+echo Installed:
+printf '\t%s\n' "${packages[@]}"

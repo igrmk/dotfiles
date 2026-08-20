@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+packages=(
+	pandoc
+	texlive-xetex
+)
+
+sudo apt-get install -y "${packages[@]}"
+
+echo Installed:
+printf '\t%s\n' "${packages[@]}"

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+packages=(
+	clangd-22
+	cmake
+	g++-14
+	g++-16
+	gcc-14
+	gcc-16
+)
+
+sudo apt-get install -y "${packages[@]}"
+
+echo Installed:
+printf '\t%s\n' "${packages[@]}"

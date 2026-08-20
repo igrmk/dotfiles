@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+packages=(
+	cargo
+	curl
+	fd-find
+	ffmpeg
+	fzf
+	git
+	interception-caps2esc
+	interception-tools
+	openssh-server
+	ripgrep
+	stow
+	tree-sitter-cli
+	zoxide
+	zplug
+	zsh
+)
+
+sudo apt-get install -y "${packages[@]}"
+
+echo Installed:
+printf '\t%s\n' "${packages[@]}"
