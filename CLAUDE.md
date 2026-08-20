@@ -11,6 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Don't use `+` in commit messages (write "and" or use commas)
 - Capitalize acronyms and proper nouns in commit messages (e.g., `LSP`, `Python`)
 - NEVER push to origin unless explicitly asked; committing does not imply pushing (applies to every repo, not just this one)
+- Format matrix-like data Go-style: pad columns with spaces so columns start at the same offset
+  (e.g. package name and URL pairs in a shell array)
 - Write one comment line by default; go longer only when the reason genuinely needs it
 - Comment the non-obvious why, not what the code already says
 - Break comment lines at clause boundaries, not mid-phrase (e.g., keep a parenthetical list on one line)
@@ -25,7 +27,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 When installing software (not configs), prefer these methods in order and use the highest one
 that has the tool:
 
-1. System packages (`apt` on Linux)
+1. System packages
+   (`apt` on Linux — see the `dotfiles-install-apt-*` scripts in `home/linux/dot-local/bin/`)
 2. Homebrew (macOS)
 3. Snap (Linux — see `home/linux/dot-local/bin/dotfiles-install-snaps`)
 4. `uv tool install` (Python CLIs and language servers)
