@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Install and enable the GNOME Shell extensions kept on this machine (from extensions.gnome.org).
+# Re-run to install missing ones; requires a running GNOME session for the D-Bus install API.
+set -euo pipefail
+
+extensions=(
+	bluetooth-battery@michalw.github.com
+)
+
+for e in "${extensions[@]}"; do
+	uvx --from gnome-extensions-cli gext install "$e"
+	gnome-extensions enable "$e"
+done
