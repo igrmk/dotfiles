@@ -3,6 +3,7 @@ set -euo pipefail
 
 xdg-mime default google-chrome.desktop \
 	text/html \
+	application/xhtml+xml \
 	x-scheme-handler/http \
 	x-scheme-handler/https \
 	x-scheme-handler/about \
