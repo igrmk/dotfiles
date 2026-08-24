@@ -8,7 +8,9 @@ Usage
 -----
 
 ```bash
-cd home
+# Clone to the root filesystem so the /etc symlinks resolve at boot
+git clone git@github.com:igrmk/dotfiles.git ~/dotfiles
+cd ~/dotfiles/home
 ./create-dirs
 stow common
 stow zsh
