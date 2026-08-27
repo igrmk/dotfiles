@@ -15,6 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   (e.g. package name and URL pairs in a shell array)
 - Write one comment line by default; go longer only when the reason genuinely needs it
 - Comment the non-obvious why, not what the code already says
+- Keep each comment as short as the reason allows; cut words that carry nothing
 - Break comment lines at clause boundaries, not mid-phrase (e.g., keep a parenthetical list on one line)
 - Keep Markdown and comment lines to 100 columns, wrapping at clause boundaries (not mid-phrase)
 - 100 columns is an upper bound, not a target; lines often land well short of it
