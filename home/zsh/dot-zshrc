@@ -54,6 +54,8 @@ zstyle ':omz:update' mode auto
 zstyle ':omz:update' frequency 13
 zstyle ':chpwd:*' recent-dirs-max 100
 zstyle ':completion:*:*:cdr:*:*' menu selection
+# Rehash before completing command names so binaries installed after the shell started show up
+zstyle ':completion:*' rehash true
 
 zmodload zsh/complist
 bindkey -M menuselect 'h' vi-backward-char

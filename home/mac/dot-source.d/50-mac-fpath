@@ -1,0 +1,2 @@
+# Apple's zsh doesn't have this in the default fpath, so brew-installed completions never load
+fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
