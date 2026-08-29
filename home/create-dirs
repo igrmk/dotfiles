@@ -17,4 +17,8 @@ dirs=(
 	"$HOME/.vim/config"
 )
 
+if [ "$(uname)" = Darwin ]; then
+	dirs+=("$HOME/Library/LaunchAgents")
+fi
+
 install -d -m 700 "${dirs[@]}"

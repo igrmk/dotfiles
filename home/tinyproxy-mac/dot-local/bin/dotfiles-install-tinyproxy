@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Seeds the config on first run, since the agent crash-loops without it. Re-run to restart.
+set -euo pipefail
+
+brew install --quiet tinyproxy
+
+config="${XDG_CONFIG_HOME:-$HOME/.config}/tinyproxy/tinyproxy.conf"
+if [ ! -f "$config" ]; then
+	install -d -m 700 "$(dirname "$config")"
+	umask 077
+	cat > "$config" <<-'CONF'
+		Port 3128
+		Listen 127.0.0.1
+		Allow 127.0.0.1
+
+		upstream http USER:PASS@HOST:PORT
+
+		LogLevel Warning
+		CONF
+	echo "Wrote $config, fill in the credentials and re-run."
+fi
+
+label=local.tinyproxy
+target="gui/$(id -u)"
+# kickstart rather than bootout plus bootstrap, which races itself.
+if launchctl print "$target/$label" >/dev/null 2>&1; then
+	launchctl kickstart -k "$target/$label"
+else
+	launchctl bootstrap "$target" "$HOME/Library/LaunchAgents/$label.plist"
+fi
+
+echo "Done. tinyproxy is listening on 127.0.0.1:3128."
