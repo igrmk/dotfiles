@@ -55,7 +55,7 @@ stow -D <package>      # Uninstall a package
 
 For system-level configs:
 ```bash
-cd root
+cd linux-root
 sudo ./create-dirs     # Create required directories first
 sudo stow <package>    # Installs to / instead of ~
 ```
@@ -65,7 +65,7 @@ sudo stow <package>    # Installs to / instead of ~
 ### Directory Structure
 
 - `home/` - User-level configs, stowed to `~`
-- `root/` - System-level configs, stowed to `/`
+- `linux-root/` - System-level configs, stowed to `/` (Linux only)
 
 ### Stow Conventions
 
