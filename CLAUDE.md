@@ -56,6 +56,7 @@ stow -D <package>      # Uninstall a package
 For system-level configs:
 ```bash
 cd root
+sudo ./create-dirs     # Create required directories first
 sudo stow <package>    # Installs to / instead of ~
 ```
 

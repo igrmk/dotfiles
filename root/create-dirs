@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Pre-created so stow links files into them instead of folding the directory into the repo
+dirs=(
+	/etc/interception
+	/etc/systemd/system/gpu-manager.service.d
+)
+
+install -d -m 755 "${dirs[@]}"
