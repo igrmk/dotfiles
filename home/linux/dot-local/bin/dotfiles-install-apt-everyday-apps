@@ -34,7 +34,7 @@ for ((i = 0; i < ${#third_party_packages[@]}; i += 2)); do
 	install_third_party_deb "${third_party_packages[i]}" "${third_party_packages[i + 1]}"
 done
 
-echo Installed:
+echo Ensured:
 printf '\t%s\n' "${packages[@]}"
 for ((i = 0; i < ${#third_party_packages[@]}; i += 2)); do
 	printf '\t%s\n' "${third_party_packages[i]}"

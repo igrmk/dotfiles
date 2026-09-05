@@ -8,5 +8,5 @@ packages=(
 
 sudo apt-get install -y "${packages[@]}"
 
-echo Installed:
+echo Ensured:
 printf '\t%s\n' "${packages[@]}"
