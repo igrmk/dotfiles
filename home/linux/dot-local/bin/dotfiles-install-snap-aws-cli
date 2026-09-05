@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if snap list aws-cli &>/dev/null; then
+	echo "aws-cli already installed"
+else
+	sudo snap install --classic aws-cli
+fi

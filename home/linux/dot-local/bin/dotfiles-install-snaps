@@ -9,7 +9,6 @@ strict_snaps=(
 )
 
 classic_snaps=(
-	aws-cli
 	go
 	nvim
 )
