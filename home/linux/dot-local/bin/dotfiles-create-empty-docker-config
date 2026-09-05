@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+config="$HOME/.docker/config.json"
+
+install -d -m 700 "$HOME/.docker"
+
+# An existing config may hold credsStore or proxy settings
+if [ -e "$config" ]; then
+	chmod 600 "$config"
+	echo "$config already exists"
+else
+	# Docker parses this, so {}, not an empty file
+	printf '{}\n' | install -m 600 /dev/stdin "$config"
+	echo "Created $config"
+fi
