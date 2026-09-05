@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+arch=$(dpkg --print-architecture)
+url=https://storage.googleapis.com/minikube/releases/latest/minikube_latest_$arch.deb
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+curl -fsSL "$url" -o "$tmp/minikube.deb"
+sudo dpkg -i "$tmp/minikube.deb"
