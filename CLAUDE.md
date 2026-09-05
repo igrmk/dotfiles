@@ -11,6 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Don't use `+` in commit messages (write "and" or use commas)
 - Capitalize acronyms and proper nouns in commit messages (e.g., `LSP`, `Python`)
 - NEVER push to origin unless explicitly asked; committing does not imply pushing (applies to every repo, not just this one)
+- Fix an unpushed commit with `git commit --fixup` and autosquash, never a follow-up commit
 - Format matrix-like data Go-style: pad columns with spaces so columns start at the same offset
   (e.g. package name and URL pairs in a shell array)
 - Write one comment line by default; go longer only when the reason genuinely needs it
