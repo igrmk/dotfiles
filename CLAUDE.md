@@ -81,10 +81,13 @@ Shell configs use a `.source.d/` pattern for modularity. Files in `~/.source.d/`
 The numeric prefix is a load-order tier:
 - `10-` — PATH setup only. These run first so later files can probe for tools.
 - `50-` — everything else (aliases, functions, tool config).
+- `90-` — machine-local overrides, sorted last so they win over anything tracked.
 
 Anything that tests for a tool at load time (`command -v`, `which`) must sort after the `10-` files, otherwise the tool is not on PATH yet and the check silently fails.
 
 Platform-specific packages (`linux/`, `mac/`) add their own `.source.d/` files when stowed.
+
+Untracked machine-local settings (credentials, per-host profiles) go in `~/.source.d/90-local`.
 
 ### Git Config Layering
 

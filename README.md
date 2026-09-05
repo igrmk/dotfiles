@@ -18,3 +18,8 @@ stow git
 stow ipython
 # Add more configurations as needed
 ```
+
+Local overrides
+---------------
+
+Untracked machine-local settings go in `~/.source.d/90-local`, automatically sourced by both shells.
