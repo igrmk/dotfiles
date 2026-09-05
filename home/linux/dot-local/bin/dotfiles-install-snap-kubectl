@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if snap list kubectl &>/dev/null; then
+	echo "kubectl already installed"
+else
+	sudo snap install --classic kubectl
+fi
+
+echo "To pin a version:"
+echo "sudo snap refresh kubectl --channel=1.35/stable"
