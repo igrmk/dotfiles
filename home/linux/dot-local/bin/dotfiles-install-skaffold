@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+arch=$(dpkg --print-architecture)
+url=https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-$arch
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+curl -fsSL "$url" -o "$tmp/skaffold"
+install -m 755 "$tmp/skaffold" "$HOME/.local/bin/skaffold"
