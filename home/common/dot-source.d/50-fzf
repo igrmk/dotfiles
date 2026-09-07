@@ -1,7 +1,10 @@
 export FZF_DEFAULT_COMMAND="rg --files"
 
+# Ctrl-F inside the directory picker reloads the list with dotted and ignored directories
 if command -v fdfind >/dev/null 2>&1; then
 	export FZF_ALT_C_COMMAND="fdfind -t d . ."
+	export FZF_ALT_C_OPTS="--bind 'ctrl-f:reload(fdfind -t d -H -I -E .git . .)'"
 elif command -v fd >/dev/null 2>&1; then
 	export FZF_ALT_C_COMMAND="fd -t d . ."
+	export FZF_ALT_C_OPTS="--bind 'ctrl-f:reload(fd -t d -H -I -E .git . .)'"
 fi
