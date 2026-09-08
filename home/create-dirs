@@ -2,6 +2,8 @@
 set -euo pipefail
 
 dirs=(
+	"$HOME/.claude"
+	"$HOME/.claude/skills"
 	"$HOME/.colima/_templates"
 	"$HOME/.config/environment.d"
 	"$HOME/.config/git"
