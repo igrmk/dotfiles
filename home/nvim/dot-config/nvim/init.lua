@@ -24,6 +24,19 @@ local function picker(name)
     return function() require('telescope.builtin')[name]() end
 end
 
+-- Python project roots, shared by the basedpyright config and the workspace symbol start below.
+-- No .git fallback: go-to-definition opens stubs under Homebrew's Cellar, whose nearest .git is
+-- /opt/homebrew, and that would root the whole tree.
+-- Python projects have a real marker; stubs get single-file mode.
+local python_root_markers = {
+    'pyrightconfig.json',
+    'pyproject.toml',
+    'setup.py',
+    'setup.cfg',
+    'requirements.txt',
+    'Pipfile',
+}
+
 local function diffview_action(name)
     return function() require('diffview.actions')[name]() end
 end
@@ -300,18 +313,8 @@ require('lazy').setup({
             -- Type checking off by default; projects opt in via [tool.basedpyright],
             -- which makes basedpyright drop every setting below.
             vim.lsp.config('basedpyright', {
-                -- Drop the default .git fallback.
-                -- Go-to-definition opens stubs under Homebrew's Cellar,
-                -- whose nearest .git is /opt/homebrew: that would root the whole tree.
-                -- Python projects have a real marker; stubs get single-file mode.
-                root_markers = {
-                    'pyrightconfig.json',
-                    'pyproject.toml',
-                    'setup.py',
-                    'setup.cfg',
-                    'requirements.txt',
-                    'Pipfile',
-                },
+                -- Drops the default .git fallback; see python_root_markers above.
+                root_markers = python_root_markers,
                 settings = {
                     basedpyright = {
                         analysis = {
@@ -480,17 +483,39 @@ local function cpp_root(path)
     end
 end
 
--- The compiler the project builds with; the first entry settles it, nothing mixes drivers.
-local function compilation_database_driver(compilation_database_dir)
+-- The first entry stands for the whole project: nothing mixes drivers,
+-- and any one file is enough to prime the index.
+local function compilation_database_entry(compilation_database_dir)
     local f = io.open(compilation_database_dir .. '/compile_commands.json')
     if not f then return nil end
     local ok, db = pcall(vim.json.decode, f:read('*a'))
     f:close()
-    local entry = ok and db[1]
+    return ok and db[1] or nil
+end
+
+-- The compiler the project builds with.
+local function compilation_database_driver(entry)
     if not entry then return nil end
     -- `command` is a shell string, `arguments` an argv array; either spelling is valid.
     if entry.arguments then return entry.arguments[1] end
     return entry.command and vim.split(entry.command, ' ')[1]
+end
+
+local function compilation_database_file(entry)
+    local file = entry and entry.file
+    if not file then return nil end
+    -- `file` is relative to the entry's own `directory` unless it is already absolute.
+    if vim.startswith(file, '/') then return file end
+    return entry.directory and entry.directory .. '/' .. file or nil
+end
+
+-- clangd's own search skips nested build dirs, so find compile_commands.json ourselves.
+local function find_compilation_database(root)
+    for _, sub in ipairs({ 'build/Debug', 'build/Release', 'build' }) do
+        local dir = root .. '/' .. sub
+        if vim.uv.fs_stat(dir .. '/compile_commands.json') then return dir end
+    end
+    return nil
 end
 
 -- clangd's --query-driver drops the driver's own builtin include dir for clang's resource dir,
@@ -502,7 +527,8 @@ local function gcc_config_home(compilation_database_dir)
     if cached ~= nil then return cached or nil end
     gcc_config_homes[compilation_database_dir] = false
 
-    local driver = compilation_database_driver(compilation_database_dir)
+    local entry = compilation_database_entry(compilation_database_dir)
+    local driver = compilation_database_driver(entry)
     if not driver or not (driver:match('gcc') or driver:match('g%+%+')) then return nil end
 
     local probe = vim.system({ driver, '-print-file-name=include' }, { text = true }):wait()
@@ -532,35 +558,193 @@ local function gcc_config_home(compilation_database_dir)
     return home
 end
 
--- C/C++ LSP via built-in client (no plugins). clangd + GCC query-driver.
+-- clangd + GCC query-driver, for a buffer path or a directory.
+local function clangd_config(path)
+    local root = cpp_root(path)
+    local cmd = { clangd_bin(), '--query-driver=/usr/bin/g++*,/usr/bin/gcc*' }
+    local config_home
+    local database_dir = root and find_compilation_database(root)
+    if database_dir then
+        table.insert(cmd, '--compile-commands-dir=' .. database_dir)
+        config_home = gcc_config_home(database_dir)
+    end
+    return {
+        name = 'clangd',
+        cmd = cmd,
+        -- clangd reads its user config from $XDG_CONFIG_HOME/clangd/config.yaml.
+        cmd_env = { XDG_CONFIG_HOME = config_home },
+        root_dir = root,
+        -- Standard for files not in the compilation database (concepts, operator<=>).
+        init_options = { fallbackFlags = { '-std=c++23' } },
+    }
+end
+
+-- C/C++ LSP via built-in client (no plugins).
 vim.api.nvim_create_autocmd('FileType', {
     pattern = { 'c', 'cpp' },
     callback = function(args)
-        local root = cpp_root(vim.api.nvim_buf_get_name(args.buf))
-        local cmd = { clangd_bin(), '--query-driver=/usr/bin/g++*,/usr/bin/gcc*' }
-        local config_home
-        -- clangd's own search skips nested build dirs; point it at compile_commands.json.
-        if root then
-            for _, sub in ipairs({ 'build/Debug', 'build/Release', 'build' }) do
-                local compilation_database_dir = root .. '/' .. sub
-                if vim.uv.fs_stat(compilation_database_dir .. '/compile_commands.json') then
-                    table.insert(cmd, '--compile-commands-dir=' .. compilation_database_dir)
-                    config_home = gcc_config_home(compilation_database_dir)
-                    break
-                end
-            end
-        end
-        vim.lsp.start({
-            name = 'clangd',
-            cmd = cmd,
-            -- clangd reads its user config from $XDG_CONFIG_HOME/clangd/config.yaml.
-            cmd_env = { XDG_CONFIG_HOME = config_home },
-            root_dir = root,
-            -- Standard for files not in the compilation database (concepts, operator<=>).
-            init_options = { fallbackFlags = { '-std=c++23' } },
-        })
+        vim.lsp.start(clangd_config(vim.api.nvim_buf_get_name(args.buf)))
     end,
 })
+
+-- clangd reads the compilation database lazily, on the first file it is asked about, and only
+-- then does the background index that answers workspace/symbol start. An empty didOpen followed
+-- by didClose primes it without a buffer, so symbol search works before any file is opened.
+-- gopls and basedpyright index the project on their own, so neither needs this.
+local function prime_clangd_index(client, root)
+    local database_dir = find_compilation_database(root)
+    local entry = database_dir and compilation_database_entry(database_dir)
+    local file = compilation_database_file(entry)
+    if not file then return end
+    local uri = vim.uri_from_fname(file)
+    client:notify('textDocument/didOpen', {
+        textDocument = { uri = uri, languageId = 'cpp', version = 1, text = '' },
+    })
+    client:notify('textDocument/didClose', { textDocument = { uri = uri } })
+end
+
+-- gopls and basedpyright come from nvim-lspconfig, which loads on filetype and so is still
+-- unloaded when no file has been opened. Loading it is what puts their lsp/*.lua on the
+-- runtimepath for vim.lsp.config to resolve, our own overrides included.
+local function lspconfig_config(name, root)
+    require('lazy').load({ plugins = { 'nvim-lspconfig' } })
+    local config = vim.lsp.config[name]
+    if not config then return nil end
+    -- vim.lsp.start would report a missing server as a failed spawn, at every startup.
+    if type(config.cmd) == 'table' and vim.fn.executable(config.cmd[1]) == 0 then return nil end
+    -- gopls resolves its root from a buffer, which a client attached to none does not have.
+    return vim.tbl_extend('force', config, { root_dir = root })
+end
+
+-- Servers that index a whole project, so a client attached to no buffer answers workspace
+-- symbols just as well as one attached to a file. Each entry finds its own kind of project
+-- root above a directory, hands back a config for it, and primes it if it indexes lazily.
+local workspace_servers = {
+    {
+        root = function(dir)
+            local root = cpp_root(dir)
+            -- clangd indexes what the compilation database lists, so without one there is
+            -- nothing to search.
+            if root and find_compilation_database(root) then return root end
+            return nil
+        end,
+        config = clangd_config,
+        prime = prime_clangd_index,
+    },
+    {
+        root = function(dir) return vim.fs.root(dir, { 'go.work', 'go.mod' }) end,
+        config = function(root) return lspconfig_config('gopls', root) end,
+    },
+    {
+        root = function(dir) return vim.fs.root(dir, python_root_markers) end,
+        config = function(root) return lspconfig_config('basedpyright', root) end,
+    },
+}
+
+-- Reused by the FileType autocmd above once a file does open, since vim.lsp.start matches on
+-- name and root.
+local function start_workspace_clients()
+    local dir = vim.fn.getcwd()
+    local clients = {}
+    for _, server in ipairs(workspace_servers) do
+        local root = server.root(dir)
+        local config = root and server.config(root)
+        if config then
+            -- Priming needs the initialize reply, which is what on_init waits for. It does not
+            -- run for a reused client, rightly: that one is already primed, or has a buffer.
+            if server.prime then
+                config.on_init = function(client) server.prime(client, root) end
+            end
+            local id = vim.lsp.start(config, { attach = false })
+            local client = id and vim.lsp.get_client_by_id(id)
+            if client then table.insert(clients, client) end
+        end
+    end
+    return clients
+end
+
+-- Eagerly, so the index is warm by the first keypress: building it takes seconds, and these are
+-- the servers the project would start on its first file anyway.
+vim.api.nvim_create_autocmd('VimEnter', {
+    once = true,
+    callback = function() start_workspace_clients() end,
+})
+
+-- Telescope's LSP pickers request through the current buffer, so they find nothing when no
+-- client is attached to it. Asking the clients directly lifts that restriction, which is what
+-- lets a buffer-less client serve the picker.
+local function workspace_symbol_requester(clients)
+    local channel = require('plenary.async.control').channel
+    local cancel = function() end
+    return function(prompt)
+        cancel()
+        local tx, rx = channel.oneshot()
+        local items, requests = {}, {}
+        local pending = #clients
+        for _, client in ipairs(clients) do
+            local function handler(_, result)
+                if result then
+                    local encoding = client.offset_encoding
+                    vim.list_extend(items, vim.lsp.util.symbols_to_items(result, 0, encoding))
+                end
+                pending = pending - 1
+                if pending == 0 then tx() end
+            end
+            local ok, id = client:request('workspace/symbol', { query = prompt }, handler)
+            if ok and id then
+                table.insert(requests, { client = client, id = id })
+            else
+                pending = pending - 1
+            end
+        end
+        -- Nothing answered, so nothing will wake rx.
+        if pending == 0 then return items end
+        cancel = function()
+            for _, request in ipairs(requests) do request.client:cancel_request(request.id) end
+        end
+        rx()
+        return items
+    end
+end
+
+local function workspace_symbols()
+    local clients = vim.lsp.get_clients({ bufnr = 0, method = 'workspace/symbol' })
+    if #clients == 0 then
+        -- Only reached when VimEnter found no project, or the cwd changed since.
+        clients = start_workspace_clients()
+        if #clients == 0 then
+            vim.notify('No project above the working directory to search', vim.log.levels.WARN)
+            return
+        end
+        clients = vim.tbl_filter(function(client)
+            -- Requesting before the initialize reply is a protocol error, and start does not wait.
+            return vim.wait(3000, function() return client.initialized end)
+        end, clients)
+        if #clients == 0 then
+            vim.notify('No language server initialized in time', vim.log.levels.WARN)
+            return
+        end
+    end
+    local conf = require('telescope.config').values
+    require('telescope.pickers')
+        .new({}, {
+            prompt_title = 'Workspace Symbols',
+            finder = require('telescope.finders').new_dynamic({
+                entry_maker = require('telescope.make_entry').gen_from_lsp_symbols({}),
+                fn = workspace_symbol_requester(clients),
+            }),
+            previewer = conf.qflist_previewer({}),
+            sorter = conf.generic_sorter({}),
+            attach_mappings = function(_, picker_map)
+                picker_map('i', '<c-space>', require('telescope.actions').to_fuzzy_refine)
+                return true
+            end,
+        })
+        :find()
+end
+
+-- Global, unlike the LSP mappings below: it starts a server itself when none is attached.
+map('n', '<leader><space>', workspace_symbols, { desc = 'Workspace symbols' })
 
 -- gopls, ruff, basedpyright, and roslyn_ls (C#) are enabled via nvim-lspconfig in the plugin spec above.
 
@@ -616,7 +800,6 @@ vim.api.nvim_create_autocmd('LspAttach', {
         map('n', 'gu', vim.lsp.buf.references, buf_with_desc('List references'))
         map('n', 'gi', vim.lsp.buf.implementation, buf_with_desc('Go to implementation'))
         map('n', 'K', vim.lsp.buf.hover, buf_with_desc('Hover documentation'))
-        map('n', '<leader><space>', picker('lsp_dynamic_workspace_symbols'), buf_with_desc('Workspace symbols'))
         map('n', '<leader>r', vim.lsp.buf.rename, buf_with_desc('Rename symbol'))
         map('n', '<leader>a', vim.lsp.buf.code_action, buf_with_desc('Code action'))
         map('n', '<leader>=', function() vim.lsp.buf.format() end, buf_with_desc('Format buffer'))
