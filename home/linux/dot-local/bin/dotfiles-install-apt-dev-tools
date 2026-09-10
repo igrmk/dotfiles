@@ -8,6 +8,7 @@ packages=(
 	g++-16
 	gcc-14
 	gcc-16
+	postgresql-client
 )
 
 sudo apt-get install -y "${packages[@]}"
