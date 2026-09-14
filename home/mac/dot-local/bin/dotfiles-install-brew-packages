@@ -110,6 +110,7 @@ formulae=(
 	rust
 	s3cmd
 	samba
+	scw
 	sd
 	shellcheck
 	shntool
