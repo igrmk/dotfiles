@@ -1,0 +1,3 @@
+# Let the idle NVIDIA GPU drop to D3cold (power off) even with no driver bound.
+# The stock 71-nvidia.rules allows that only once the nvidia driver binds to the GPU.
+ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x10de", ATTR{class}=="0x03[0-9]*", TEST=="power/control", ATTR{power/control}="auto"

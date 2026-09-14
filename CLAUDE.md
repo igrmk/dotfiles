@@ -61,6 +61,9 @@ sudo ./create-dirs     # Create required directories first
 sudo stow <package>    # Installs to / instead of ~
 ```
 
+The `nvidia` package touches the boot chain,
+so run `sudo dracut -f` after `stow` and after `stow -D`.
+
 ## Architecture
 
 ### Directory Structure

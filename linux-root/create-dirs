@@ -3,8 +3,10 @@ set -euo pipefail
 
 # Pre-created so stow links files into them instead of folding the directory into the repo
 dirs=(
+	/etc/dracut.conf.d
 	/etc/interception
 	/etc/systemd/system/gpu-manager.service.d
+	/etc/udev/rules.d
 )
 
 install -d -m 755 "${dirs[@]}"
