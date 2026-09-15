@@ -1,8 +1,11 @@
 alias hg='kitty +kitten hyperlinked_grep'
 alias icat='kitty +kitten icat'
 
-sun() { kitty +kitten themes --reload-in=all Garlic Sun; export BRIGHT=high; echo high > ~/.bright; }
-moon() { kitty +kitten themes --reload-in=all Garlic Moon; export BRIGHT=low; echo low > ~/.bright; }
+# Editing themes.conf keeps the theme switch out of the stowed kitty.conf
+_kitty_theme() { kitty +kitten themes --reload-in=all --config-file-name themes.conf "$@"; }
+
+sun() { _kitty_theme Garlic Sun; export BRIGHT=high; echo high > ~/.bright; }
+moon() { _kitty_theme Garlic Moon; export BRIGHT=low; echo low > ~/.bright; }
 
 pdfcat() {
 	output="$(mktemp -d)"
