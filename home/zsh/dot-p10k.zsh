@@ -16,6 +16,7 @@ local BLUISH=117
 local GREENISH=157
 local YELLOWISH=228
 local REDISH=001
+local SSH_PURPLE=225
 
 # Temporarily change options.
 'builtin' 'local' '-a' 'p10k_config_opts'
@@ -38,6 +39,7 @@ local REDISH=001
   typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(
     # =========================[ Line #1 ]=========================
     # os_icon               # os identifier
+    context                 # user@hostname for SSH and elevated privileges
     dir                     # current directory
     vcs                     # git status
     # =========================[ Line #2 ]=========================
@@ -90,7 +92,6 @@ local REDISH=001
     gcloud                  # google cloud cli account and project (https://cloud.google.com/)
     google_app_cred         # google application credentials (https://cloud.google.com/docs/authentication/production)
     toolbox                 # toolbox name (https://github.com/containers/toolbox)
-    context                 # user@hostname
     nordvpn                 # nordvpn connection status, linux only (https://nordvpn.com/)
     ranger                  # ranger shell (https://github.com/ranger/ranger)
     nnn                     # nnn shell (https://github.com/jarun/nnn)
@@ -924,7 +925,7 @@ local REDISH=001
   # Context color when running with privileges.
   typeset -g POWERLEVEL9K_CONTEXT_ROOT_FOREGROUND=178
   # Context color in SSH without privileges.
-  typeset -g POWERLEVEL9K_CONTEXT_{REMOTE,REMOTE_SUDO}_FOREGROUND=180
+  typeset -g POWERLEVEL9K_CONTEXT_{REMOTE,REMOTE_SUDO}_FOREGROUND=${SSH_PURPLE}
   # Default context color (no privileges, no SSH).
   typeset -g POWERLEVEL9K_CONTEXT_FOREGROUND=180
 
