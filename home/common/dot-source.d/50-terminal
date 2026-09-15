@@ -14,3 +14,6 @@ get-terminal-background-color() {
 	echo "$result"
 	return $success
 }
+
+# p10k drops its blank line on a new TTY, gluing the first prompt to the login banner
+[ -n "$SSH_CONNECTION" ] && echo
