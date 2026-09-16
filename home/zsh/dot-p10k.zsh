@@ -39,7 +39,8 @@ local SSH_PURPLE=225
   typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(
     # =========================[ Line #1 ]=========================
     # os_icon               # os identifier
-    context                 # user@hostname for SSH and elevated privileges
+    ssh                     # remote session, including as root
+    context_joined          # user@hostname for SSH and elevated privileges
     dir                     # current directory
     vcs                     # git status
     # =========================[ Line #2 ]=========================
@@ -920,6 +921,11 @@ local SSH_PURPLE=225
 
   # Custom icon.
   # typeset -g POWERLEVEL9K_CPU_ARCH_VISUAL_IDENTIFIER_EXPANSION='⭐'
+
+  ####################################[ ssh: remote session ]###################################
+  typeset -g POWERLEVEL9K_SSH_FOREGROUND=${SSH_PURPLE}
+  # The padlock from home/kitty/dot-config/kitty/kitty.conf
+  typeset -g POWERLEVEL9K_SSH_VISUAL_IDENTIFIER_EXPANSION=$'\ue0a2'
 
   ##################################[ context: user@hostname ]##################################
   # Context color when running with privileges.
