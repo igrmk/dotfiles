@@ -16,6 +16,7 @@ dirs=(
 	"$HOME/.local/bin"
 	"$HOME/.local/share/pandoc/filters"
 	"$HOME/.source.d"
+	"$HOME/.ssh"
 	"$HOME/.vim/config"
 )
 

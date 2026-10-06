@@ -1,0 +1,13 @@
+# UseKeychain exists only in the macOS ssh; Linux rejects the whole file without this
+IgnoreUnknown UseKeychain
+
+# Machine-local hosts come first, since ssh keeps the first value it finds for each option
+Include ~/.ssh/local
+
+Host *
+  UseKeychain         yes
+  AddKeysToAgent      yes
+  IdentitiesOnly      yes
+  ServerAliveInterval 3
+  ServerAliveCountMax 3
+  SendEnv             COLORTERM
