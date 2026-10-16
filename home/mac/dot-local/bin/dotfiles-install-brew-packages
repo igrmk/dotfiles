@@ -102,6 +102,7 @@ formulae=(
 	python@3.10
 	python@3.11
 	qpdf
+	rclone
 	resvg
 	riff
 	ripgrep
