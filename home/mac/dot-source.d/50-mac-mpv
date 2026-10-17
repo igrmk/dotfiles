@@ -1,0 +1,52 @@
+# Play two audio tracks of FILE_OR_URL on the two devices of an aggregate audio device.
+# The aggregate needs a Quadraphonic speaker setup, otherwise mpv downmixes to stereo.
+mpvsplit() {
+	local input=$1 probe devs dev tracks a1 a2 tab=$'\t'
+	if [ -z "$input" ]; then
+		echo "usage: mpvsplit FILE_OR_URL" >&2
+		return 1
+	fi
+
+	devs=$(mpv --audio-device=help | sed -n "s/^  '\(coreaudio\/~:AMS2_Aggregate[^']*\)' (\(.*\))\$/\1$tab\2/p")
+	case $(printf '%s' "$devs" | grep -c .) in
+		0) echo "mpvsplit: no aggregate device found" >&2; return 1 ;;
+		1) dev=$devs ;;
+		*) dev=$(printf '%s\n' "$devs" | fzf --prompt='device> ' --delimiter="$tab" --with-nth=2) || return ;;
+	esac
+	dev=${dev%%"$tab"*}
+
+	# Probe the first entry of an rqbit playlist, since ffprobe can't read it.
+	probe=$input
+	case $input in
+		*/playlist) probe=$(curl -fsS "$input" | grep -v '^#' | head -1) || return ;;
+	esac
+	local ffprobe_args=(
+		-v error
+		-select_streams a
+		-show_entries 'stream=codec_name,channels:stream_tags=language,title'
+		-of compact=p=0:nk=1
+	)
+	tracks=$(ffprobe "${ffprobe_args[@]}" "$probe" | awk '{print NR "\t" $0}')
+	[ -n "$tracks" ] || { echo "mpvsplit: no audio tracks in $probe" >&2; return 1; }
+
+	a1=$(printf '%s\n' "$tracks" | fzf --prompt='track for first device> ') || return
+	a2=$(printf '%s\n' "$tracks" | fzf --prompt='track for second device> ') || return
+	a1=${a1%%"$tab"*}
+	a2=${a2%%"$tab"*}
+	if [ "$a1" = "$a2" ]; then
+		echo "mpvsplit: pick two different tracks" >&2
+		return 1
+	fi
+
+	local graph=(
+		"[aid$a1]aformat=channel_layouts=stereo[d1]"
+		"[aid$a2]aformat=channel_layouts=stereo[d2]"
+		"[d1][d2]join=inputs=2:channel_layout=quad:map=0.FL-FL|0.FR-FR|1.FL-BL|1.FR-BR[ao]"
+	)
+	local mpv_args=(
+		--lavfi-complex="$(IFS=';'; echo "${graph[*]}")"
+		--audio-channels=quad
+		--audio-device="$dev"
+	)
+	mpv "${mpv_args[@]}" "$input"
+}
