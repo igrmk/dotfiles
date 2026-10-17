@@ -107,6 +107,7 @@ formulae=(
 	riff
 	ripgrep
 	rlwrap
+	rqbit
 	ruff
 	rust
 	s3cmd
@@ -115,6 +116,7 @@ formulae=(
 	sd
 	shellcheck
 	shntool
+	sing-box
 	socat
 	sponge
 	stern
