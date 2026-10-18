@@ -35,7 +35,7 @@ Either way, cut the bloat.
 
 Width: the requested one, else the project's configured limit, else 100 columns.
 Measure the whole line, including indent and the `//` or `>` prefix,
-with tabs at the editor's width (default 4).
+with tabs at the project's configured width (`.editorconfig`, `.clang-format`, modeline), else 4.
 
 In Markdown, put one sentence per line; a comment may keep short sentences together on one line.
 An abbreviation or a decimal point does not end a sentence.
