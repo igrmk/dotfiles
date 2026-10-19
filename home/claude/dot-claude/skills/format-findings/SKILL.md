@@ -59,8 +59,3 @@ Fix: the one change that resolves it.
 - Always render the list in the reply,
   even when a findings tool has reported the same findings to the UI
   and its instructions say not to duplicate them.
-
-## While reviewing
-
-- Never touch the working tree.
-  Run mutation tests and other experiments in a temporary worktree or copy.
