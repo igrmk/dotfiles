@@ -43,6 +43,7 @@ For every finding in the last rendered list, except those the user declined:
 Lead with the verdict: sound or not, and what the checks said.
 Then one line tallying which findings are fixed.
 Do not re-render fixed findings.
+When nothing is left and nothing is new, open with "Nothing is left." and stay that brief.
 
 Render only:
 
