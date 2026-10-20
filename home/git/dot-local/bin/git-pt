@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Push like plain `git push`, then push reachable tags the remote lacks, lightweight ones included
+set -euo pipefail
+
+# Push the branch first so a rejected push publishes no tags
+git push "$@"
+
+# Find the remote the way `git push` does: the argument, the push remote, the sole remote, origin
+remote=
+tag_opts=()
+while [ "$#" -gt 0 ]; do
+    case $1 in
+        -n | --dry-run | -q | --quiet) tag_opts+=("$1") ;;
+        --repo=*) remote=${1#--repo=} ;;
+        --repo) remote=$2; shift ;;
+        -o | --push-option | --receive-pack | --exec) shift ;;
+        -*) ;;
+        *)
+            # Skip tags after an explicit refspec, which may not push HEAD's branch
+            [ -z "$remote" ] || exit 0
+            remote=$1
+            ;;
+    esac
+    shift
+done
+if [ -z "$remote" ]; then
+    branch=$(git symbolic-ref HEAD)
+    remote=$(git for-each-ref --format='%(push:remotename)' "$branch")
+fi
+if [ -z "$remote" ]; then
+    [ "$(git remote | wc -l)" -eq 1 ] && remote=$(git remote) || remote=origin
+fi
+
+# Skip tags the remote already has, even with another value, so they never fail the push
+missing=$(comm -23 \
+    <(git tag --merged HEAD --format='%(refname)' | sort) \
+    <(git ls-remote --tags --refs "$remote" | cut -f2 | sort))
+[ -n "$missing" ] || exit 0
+
+# shellcheck disable=SC2086
+git push --no-follow-tags --no-recurse-submodules ${tag_opts[@]+"${tag_opts[@]}"} "$remote" $missing
