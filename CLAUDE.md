@@ -56,6 +56,16 @@ sudo stow <package>    # Installs to / instead of ~
 The `nvidia` package touches the boot chain,
 so run `sudo dracut -f` after `stow` and after `stow -D`.
 
+### Testing GUI apps
+
+Try to launch test GUI apps hidden, so they don't steal focus from the user. For example, kitty:
+
+```bash
+open -g -j -na kitty --args --start-as=hidden -o 'shell=<command>'
+```
+
+Kill them by PID when done; they outlive their last window.
+
 ## Architecture
 
 ### Directory Structure
