@@ -126,7 +126,6 @@ formulae=(
 	terraform
 	texlive
 	tidy-html5
-	tinyproxy
 	tmux
 	tree-sitter-cli
 	uv

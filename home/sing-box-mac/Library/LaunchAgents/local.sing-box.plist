@@ -5,13 +5,13 @@
 	<key>KeepAlive</key>
 	<true/>
 	<key>Label</key>
-	<string>local.tinyproxy</string>
-	<!-- sh resolves $HOME; exec keeps KeepAlive on tinyproxy. -->
+	<string>local.sing-box</string>
+	<!-- sh resolves $HOME; exec keeps KeepAlive on sing-box. -->
 	<key>ProgramArguments</key>
 	<array>
 		<string>/bin/sh</string>
 		<string>-c</string>
-		<string>exec /opt/homebrew/opt/tinyproxy/bin/tinyproxy -d -c "$HOME/.config/tinyproxy/tinyproxy.conf"</string>
+		<string>exec /opt/homebrew/opt/sing-box/bin/sing-box run -c "$HOME/.config/sing-box/config.json"</string>
 	</array>
 	<key>RunAtLoad</key>
 	<true/>

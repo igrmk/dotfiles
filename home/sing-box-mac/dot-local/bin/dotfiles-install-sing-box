@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Requires an existing config, since the agent crash-loops without it. Re-run to restart.
+set -euo pipefail
+
+brew install --quiet sing-box
+
+config="${XDG_CONFIG_HOME:-$HOME/.config}/sing-box/config.json"
+if [ ! -f "$config" ]; then
+	echo "Create $config first." >&2
+	exit 1
+fi
+
+# Check first so a broken config fails here instead of crash-looping the agent.
+sing-box check -c "$config"
+
+label=local.sing-box
+target="gui/$(id -u)"
+# kickstart rather than bootout plus bootstrap, which races itself.
+if launchctl print "$target/$label" >/dev/null 2>&1; then
+	launchctl kickstart -k "$target/$label"
+else
+	launchctl bootstrap "$target" "$HOME/Library/LaunchAgents/$label.plist"
+fi
+
+echo "Done. sing-box is running."
