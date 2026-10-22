@@ -5,6 +5,7 @@ set -euo pipefail
 
 extensions=(
 	Bluetooth-Battery-Meter@maniacx.github.com
+	caffeine@patapon.info
 )
 
 for e in "${extensions[@]}"; do

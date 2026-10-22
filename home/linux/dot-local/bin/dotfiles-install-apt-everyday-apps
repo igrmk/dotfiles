@@ -2,7 +2,6 @@
 set -euo pipefail
 
 packages=(
-	caffeine
 	evince
 	keepassxc
 	kitty
