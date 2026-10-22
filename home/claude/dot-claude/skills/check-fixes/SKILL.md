@@ -34,6 +34,8 @@ For every finding in the last rendered list, except those the user declined:
 - Decide: fixed, fixed but defective, partly fixed, or untouched.
 - A comment or doc the fix rewrote must be true of the code as it now stands.
   A stale phrase left behind by a fix is a new finding.
+- Check every fix for clarity as well as correctness.
+  A vague or ambiguous rewrite is a new finding.
 - When soundness rests on a claim (a plan, a timing, a default), measure it rather than assume it.
 - Run the project's checks on the fixed state: build, vet, lint, tests.
   Report their results plainly, failures with output.
@@ -49,7 +51,7 @@ Render only:
 
 - findings genuinely left: untouched or partly fixed, under their original numbers;
 - new findings, numbered after the highest number ever used in this conversation, for:
-  a defect a fix introduced, a comment or doc a fix left stale,
+  a defect a fix introduced, a comment or doc a fix left stale, a vague or ambiguous rewrite,
   and an improvement or simplification of a fix, with its evidence.
 
 Each finding is one paragraph opening with a bold literal number, e.g. `**5.**`,
