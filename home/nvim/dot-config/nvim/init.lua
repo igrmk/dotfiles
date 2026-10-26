@@ -350,6 +350,27 @@ opt.listchars = { tab = '» ', trail = '·', nbsp = '⎵' }
 -- Fold column markers; +/- read as arithmetic. Only diff mode folds, so these show up there.
 opt.fillchars:append({ foldopen = '▼', foldclose = '▶', foldsep = '│' })
 opt.clipboard = 'unnamed,unnamedplus'
+-- Over SSH, nvim falls back to OSC 52 only when 'clipboard' is empty, so set it up explicitly.
+-- Paste from the last yank: kitty answers an OSC 52 read only after a confirmation prompt.
+if vim.env.SSH_TTY and not vim.env.DISPLAY and not vim.env.WAYLAND_DISPLAY then
+    local osc52 = require('vim.ui.clipboard.osc52')
+    local last = {}
+    local function copy(reg)
+        local send = osc52.copy(reg)
+        return function(lines, regtype)
+            last[reg] = { lines, regtype }
+            send(lines)
+        end
+    end
+    local function paste(reg)
+        return function() return last[reg] or { {}, 'v' } end
+    end
+    vim.g.clipboard = {
+        name = 'OSC 52',
+        copy = { ['+'] = copy('+'), ['*'] = copy('*') },
+        paste = { ['+'] = paste('+'), ['*'] = paste('*') },
+    }
+end
 opt.swapfile = false
 -- Drives the CursorHold diagnostic float; the 4s default feels broken.
 opt.updatetime = 200
