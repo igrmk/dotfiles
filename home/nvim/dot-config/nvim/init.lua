@@ -474,6 +474,11 @@ vim.api.nvim_create_autocmd('BufReadPost', {
     end,
 })
 
+-- Poll for changes on disk to reload files without waiting for focus.
+vim.uv.new_timer():start(500, 500, vim.schedule_wrap(function()
+    if vim.fn.getcmdwintype() == '' then vim.cmd('silent! checktime') end
+end))
+
 -- Distro clangd packages are versioned and the unversioned symlink lags behind; prefer the newest.
 -- Homebrew ships the unversioned name only, hence the fallback.
 local function clangd_bin()
