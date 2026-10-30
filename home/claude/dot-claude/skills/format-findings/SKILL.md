@@ -48,6 +48,7 @@ Fix: the one change that resolves it.
   Where the finding is a judgment call, the fix may be to accept it and change nothing.
 - Write each finding to stand alone, so one can be handed over without the rest of the list.
   Never point at another finding by number; restate what the reader needs.
+- Write findings so that they can be more easily understandable without digging into code.
 
 ## Re-rendering
 
