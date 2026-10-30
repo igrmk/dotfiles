@@ -15,6 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Format matrix-like data Go-style: pad columns with spaces so columns start at the same offset
   (e.g. package name and URL pairs in a shell array)
 - Write comments and Markdown per the reflow skill (`home/claude/dot-claude/skills/reflow/`)
+- Prefer one-line imperative comments (e.g. `# Disable dragging to prevent tab detaches`)
 
 ## Installing tools
 
