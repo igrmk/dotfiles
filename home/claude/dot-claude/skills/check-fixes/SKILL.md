@@ -27,7 +27,7 @@ Report only; never fix anything.
 
 ## Check each finding
 
-For every finding in the last rendered list, except those the user declined:
+For every finding in the last rendered list, except declined ones:
 
 - Read the fix, not just the diff hunk:
   the surrounding code, the comment it changed, the doc it points to.
@@ -44,29 +44,14 @@ For every finding in the last rendered list, except those the user declined:
 
 Lead with the verdict: sound or not, and what the checks said.
 Then one line tallying which findings are fixed.
-Do not re-render fixed findings.
-When nothing is left and nothing is new, open with "Nothing is left." and stay that brief.
+When nothing is left and nothing is new, open with "Nothing left." and stay that brief.
 
-Render only:
+Render only, as when the user asks what is left:
 
-- findings genuinely left: untouched or partly fixed, under their original numbers;
+- findings genuinely left: untouched or partly fixed, under their original numbers,
+  a partly fixed one rewritten to describe only what is left;
 - new findings, numbered after the highest number ever used in this conversation, for:
   a defect a fix introduced, a comment or doc a fix left stale, a vague or ambiguous rewrite,
   and an improvement or simplification of a fix, with its evidence.
 
-Each finding is one paragraph opening with a bold literal number, e.g. `**5.**`,
-never a markdown ordered-list item, which the renderer would renumber:
-
-```
-**5.** `pkg/store/query.go:42` — efficiency.
-One-sentence statement of the defect, then what it rests on.
-Failure: concrete inputs or state, then the wrong output or crash.
-Fix: the one change that resolves it.
-```
-
-Every finding carries every field: number, repo-relative `file:line`, a category slug,
-summary, failure scenario, and `Fix:` on its own line.
-A status never replaces them.
-Never renumber.
-Never state a defect outside the enumerated list.
-Write each finding to stand alone, without reference to the others.
+Render findings per the `format-findings` skill.
