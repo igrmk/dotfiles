@@ -1,0 +1,5 @@
+.DS_Store
+**/.claude/reviews/
+**/.claude/todo/
+# Added by Claude Code
+**/.claude/settings.local.json
