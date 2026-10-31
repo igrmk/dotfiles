@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 # Requires an existing config, since the agent crash-loops without it. Re-run to restart.
+# Pass --restart to skip installing and upgrading sing-box.
 set -euo pipefail
 
-brew install --quiet sing-box
+case "${1-}" in
+	--restart) ;;
+	"") brew install --quiet sing-box ;;
+	*)
+		echo "Usage: ${0##*/} [--restart]" >&2
+		exit 2
+		;;
+esac
 
 config="${XDG_CONFIG_HOME:-$HOME/.config}/sing-box/config.json"
 if [ ! -f "$config" ]; then
