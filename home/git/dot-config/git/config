@@ -96,6 +96,7 @@
    default = current
    autoSetupRemote = true
    followTags = true
+   recurseSubmodules = check
 [mergetool]
    prompt = false
    keepBackup = false
@@ -108,6 +109,8 @@
    follow = true
 [init]
    defaultBranch = main
+[submodule]
+   recurse = true
 [tag]
    sort = -version:refname
 [difftool "kdiff3"]
