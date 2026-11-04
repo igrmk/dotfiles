@@ -149,11 +149,14 @@ execute "set lcs=tab:".nr2char(187).nr2char(183)
 execute "set lcs+=trail:".nr2char(183)
 execute "set lcs+=nbsp:".nr2char(9141)
 
-au VimEnter * syntax match Invisible /\r$/ conceal
-au VimEnter * call matchadd('SpecialKey', '^\s\+', -1)
-au VimEnter * call matchadd('SpecialKey', '\s\+$', -1)
-au BufRead * DetectIndent
-au BufNewFile,BufRead *.xaml setf xml
+augroup general_settings
+    au!
+    au VimEnter * syntax match Invisible /\r$/ conceal
+    au VimEnter * call matchadd('SpecialKey', '^\s\+', -1)
+    au VimEnter * call matchadd('SpecialKey', '\s\+$', -1)
+    au BufRead * DetectIndent
+    au BufNewFile,BufRead *.xaml setf xml
+augroup END
 
 augroup EnableCurrentWordHighlighting
     autocmd!
@@ -168,8 +171,11 @@ augroup EnableCurrentWordHighlighting
 augroup END
 
 if has('unix') && !has('mac')
-    au VimLeave * call system("xsel -ib", getreg('+'))
-    au VimLeave * call system("xsel -i", getreg('+'))
+    augroup persist_clipboard
+        au!
+        au VimLeave * call system("xsel -ib", getreg('+'))
+        au VimLeave * call system("xsel -i", getreg('+'))
+    augroup END
 endif
 
 function! Fzf_open(cmd)
@@ -181,6 +187,7 @@ function! Fzf_open(cmd)
 endfunction
 
 augroup dotenv_settings
+    au!
     au BufNewFile,BufRead .env :set filetype=dotnev
     au BufNewFile,BufRead *.env :set filetype=dotnev
 augroup END
