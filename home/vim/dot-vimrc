@@ -105,9 +105,8 @@ command Sudow w !sudo tee % >/dev/null
 command Clean %s/\s\+$//e
 
 Glaive codefmt plugin[mappings]
-nmap <leader>ll :colors kull<cr>
-nmap <leader>lh :colors hull<cr>
 nmap t /TODO<cr>
+nnoremap <leader>l :source $MYVIMRC \| let &ft = &ft \| DetectIndent<cr>
 
 map ,, :nohl<cr>
 map <f10> :echo "hi<" . synIDattr(synID(line("."),col("."),1),"name") . '> trans<' . synIDattr(synID(line("."),col("."),0),"name") . "> lo<" . synIDattr(synIDtrans(synID(line("."),col("."),1)),"name") . ">"<cr>
