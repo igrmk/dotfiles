@@ -10,6 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Use one-line commit messages and don't use heredocs when committing
 - Don't use `+` in commit messages (write "and" or use commas)
 - Capitalize acronyms and proper nouns in commit messages (e.g., `LSP`, `Python`)
+- Commit finished changes without asking
 - NEVER push to origin unless explicitly asked; committing does not imply pushing (applies to every repo, not just this one)
 - Fix an unpushed commit with `git commit --fixup` and autosquash, never a follow-up commit
 - Format matrix-like data Go-style: pad columns with spaces so columns start at the same offset
