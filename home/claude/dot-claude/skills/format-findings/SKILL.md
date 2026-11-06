@@ -72,6 +72,7 @@ Every rendered finding carries every field:
   until the user asks what is left or narrows the list another way;
   from then on render only what they asked for.
 - A fixed finding's `Fix:` names the change actually made.
-- Always render the list in the reply, unless a skill sends it to a file,
+- Always render the list in the reply,
+  unless the `review-file-only` skill leaves it out of the reply,
   even when a findings tool has reported the same findings to the UI
   and its instructions say not to duplicate them.

@@ -1,34 +1,37 @@
 ---
-name: vim-review
+name: review-file
 description: >-
-  Write code review findings to a Markdown file read in vim,
+  Store code review findings in a Markdown file read in vim,
   with every code location a gF-jumpable path:line.
-  Use when the user wants to read a review in vim.
 ---
 
-# vim-review
+# review-file
 
-Write the findings per the `format-findings` skill, but to a file instead of the reply.
+Write the findings per the `format-findings` skill to a file.
 
 ## The file
 
+- Start the file only in the conversation where the user ran the review,
+  never in a review agent or its subagents.
+  In another conversation, update the file the user names instead of starting one.
 - Write it where the user says,
   by default in the reviewed repo's main worktree
   to `.claude/reviews/<feature-name>-<prefix>-<YYYY-MM-DD>-<seq>.md`.
-  Leave out `-<prefix>` when no letter was given, and `-<seq>` on the first review;
-  number later ones from 2.
+  Keep one file per conversation and letter.
+  Leave out `-<prefix>` when no letter was given,
+  and add `-<seq>`, numbered from 2, only when another conversation already used the name.
 - The file is the record of the review: never drop a finding from it.
   Keep findings as `###` headings under `## Open`, `## Fixed` and `## Declined`,
   and move a finding between sections as its status changes.
   Under an empty `## Open` write "Nothing left.", and leave out an empty Fixed or Declined.
 - A declined finding gets a `- Declined:` field with the reason, right after `- Path:`.
-- Give the command to open it: the header's command followed by `&& vi <absolute path>`.
 - The user runs vim from the reviewed repo's checkout.
   Put the command that checks out what was reviewed in the header,
   adding `git pull` when the local branch is behind its upstream.
   When the branch is checked out in another worktree, `cd` to that worktree instead.
-- Rewrite the file on every change to the list, `/check-fixes` results included,
-  then say what changed.
+- Whenever you create the file, give the command to open it:
+  the reviewed repo's checkout command from the header, followed by `&& vi <absolute path>`.
+- Rewrite the file on every change to the list, `/check-fixes` results included.
 - Wrap per the `reflow` skill.
 - Keep field labels plain, e.g. `- Fix:`, since vim shows bold markers as raw asterisks.
 
