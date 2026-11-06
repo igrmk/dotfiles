@@ -29,6 +29,11 @@ Write the findings per the `format-findings` skill to a file.
   Put the command that checks out what was reviewed in the header,
   adding `git pull` when the local branch is behind its upstream.
   When the branch is checked out in another worktree, `cd` to that worktree instead.
+- Put the command that resumes the conversation that ran the review in the header,
+  with its session ID from `$CLAUDE_CODE_SESSION_ID`.
+  Add the session name when it has one,
+  from the last `customTitle` in `~/.claude/projects/*/<session ID>.jsonl`,
+  and rewrite the header when the user renames the session.
 - Whenever you create the file, give the command to open it:
   the reviewed repo's checkout command from the header, followed by `&& vi <absolute path>`.
 - Rewrite the file on every change to the list, `/check-fixes` results included.
@@ -47,4 +52,6 @@ Write the findings per the `format-findings` skill to a file.
 # Review of `<what was reviewed>`
 
 Check out what was reviewed with `cd <absolute repo path> && <command>`.
+
+Resume `<session name>`: `cd <directory Claude started in> && claude -r <session ID>`
 ```
