@@ -422,13 +422,13 @@ map('n', 'q', function()
     end
     local float_open = diag_float_win and vim.api.nvim_win_is_valid(diag_float_win)
     if not float_open and not list_win_open() then
-        vim.cmd('Oil')
+        vim.cmd('confirm quit')
         return
     end
     diag_float_muted = true
     close_diag_float()
     vim.cmd('lclose | cclose')
-end, { desc = 'Close diffview, diagnostic float, quickfix and location lists, or open oil' })
+end, { desc = 'Close diffview, diagnostic float, quickfix and location lists, or the window asking to save changes' })
 map('n', '<leader>q', 'q', { desc = 'Record or stop a macro' })
 map('x', 'x', '"_d', { desc = 'Delete without yanking' })
 map('x', 'p', 'P', { desc = 'Paste without yanking the replaced text' })
