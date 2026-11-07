@@ -12,6 +12,7 @@ description: >-
 
 - One line per status: a bold status, a colon, then the findings' numbers, e.g. `**Declined:** B4`.
 - Numbers only: no summaries and no reasons.
+- Order the numbers by when each finding first appeared, not by letter or number.
 
 ## After fixing findings
 
