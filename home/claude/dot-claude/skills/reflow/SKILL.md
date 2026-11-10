@@ -3,33 +3,24 @@ name: reflow
 description: >-
   Reflow Markdown prose and code comments at clause boundaries,
   to the requested width, else the project's limit, else 100 columns.
-  Trim bloat only when asked or when writing new prose.
-  Use when writing or editing docs or comments, or when asked to trim, reflow, or rewrap prose.
+  Use when writing or editing docs or comments, or when asked to reflow or rewrap prose.
 ---
 
 # reflow
 
-Two passes over prose: trim, then wrap.
+Wrapping moves line breaks and never changes meaning.
+It rewords only a sentence you wrote in this task that cannot fit, keeping every fact.
 "Prose" means Markdown and code comments both.
-Trimming removes words; wrapping moves line breaks, and rewrites only a sentence that cannot fit.
-Neither changes meaning.
-Trim only when asked to or when writing new prose; a plain reflow or rewrap only wraps.
+Any other rewording, and cutting bloat, belong to the `rephrase` skill.
+Write new prose per its Rewrite section: read `../rephrase/SKILL.md`, do not run it.
 
 ## Scope
 
-The text the user asks you to tidy; otherwise, prose you wrote or changed in this task.
+The text the user asks you to reflow; otherwise, prose you wrote or changed in this task.
 Never sweep unrelated text.
 Never wrap text bound for GitHub issues, PRs and their comments, or chat:
 GitHub renders each newline there as a line break.
-Keep its paragraph breaks; trimming still applies.
-
-## Trim
-
-Comment the non-obvious why, not what the code already says.
-One comment line is the default; go longer only when the reason genuinely needs it.
-Never cut the why or a doc comment a lint or convention requires.
-Markdown has no such default: keep the prose the doc needs.
-Either way, cut the bloat.
+Keep its paragraph breaks.
 
 ## Wrap
 
@@ -51,7 +42,8 @@ Punctuation is only a guide to the pause, roughly from longest to shortest:
 5. before a clause-opening conjunction or preposition
 
 Read the sentence aloud and trust the ear: the comma in "a ceiling, not a target" barely pauses.
-If no pause fits, rewrite the sentence so one does; in a wrap-only run, let the line run over.
+If no pause fits, reword a sentence you wrote in this task, keeping every fact;
+let any other line run over.
 
 The width is a ceiling, not a target:
 never fill to it and break at the last space when a longer pause sits earlier.
@@ -74,12 +66,12 @@ Move an over-width trailing comment above its code before wrapping it.
 Keep URLs and inline code spans whole; one longer than the width may run over.
 List and blockquote markers keep their prefix and indent; the prose after them wraps.
 A single-line summary a convention requires (a docstring's first line) stays on one line:
-trim it if this run trims, else let it run over.
+shorten it if you wrote it in this task, else let it run over.
 
 ## Procedure
 
-1. Settle the scope, the destination, the width, and whether this run trims.
-2. Trim if this run trims, then wrap. Rewrap only paragraphs in scope.
+1. Settle the scope, the destination and the width.
+2. Wrap. Rewrap only paragraphs in scope.
 3. Re-read Wrap, then re-check every line:
    it ends at the longest pause that fits and splits no phrase.
    Fix any that does not.
