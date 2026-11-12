@@ -20,6 +20,7 @@ One format for review findings, in any project, from the first report to the las
   Report a finding against it only when you can show its reasoning or its numbers are wrong,
   and say so explicitly.
 - Always look for simplifications, in new code and in fixes as much as in the diff.
+- Don't ask for the user's semantic line breaks or em-dashes in someone else's code.
 
 ## Numbering
 
