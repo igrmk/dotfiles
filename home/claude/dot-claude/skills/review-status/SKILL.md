@@ -27,4 +27,5 @@ description: >-
 - Cover every finding of the review, by where it stands now.
 - Fixed is a fix still in place, and Dropped a fix later removed or superseded.
   Accepted is a finding whose fix was to change nothing, and Open one waiting on work elsewhere.
+  Posted is a comment posted on a colleague's MR and waiting for the colleague's answer.
 - Give each status only when it has findings.

@@ -10,6 +10,7 @@ argument-hint: "[letter]"
 # format-findings
 
 One format for review findings, in any project, from the first report to the last re-render.
+The `review-human` skill sets its own heading and layout for a finding written as a comment.
 
 ## What goes in
 
@@ -69,7 +70,8 @@ Every rendered finding carries every field:
   Read line numbers from the code as it stands.
 - Drop declined findings; their numbers stay unused.
   A judgment call accepted as is counts as declined.
-- Keep fixed findings after the open ones, under a `# Fixed` heading,
+- Keep posted comments after the open ones, under a `# Posted` heading, each as its heading only.
+- Keep fixed findings after those, under a `# Fixed` heading,
   until the user asks what is left or narrows the list another way;
   from then on render only what they asked for.
 - A fixed finding's `Fix:` names the change actually made.

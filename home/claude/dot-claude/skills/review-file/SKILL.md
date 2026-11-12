@@ -21,9 +21,11 @@ Write the findings per the `format-findings` skill to a file.
   Leave out `-<prefix>` when no letter was given,
   and add `-<seq>`, numbered from 2, only when another conversation already used the name.
 - The file is the record of the review: never drop a finding from it.
-  Keep findings as `###` headings under `## Open`, `## Fixed` and `## Declined`,
+  Keep findings as `###` headings under `## Open`, `## Posted`, `## Fixed` and `## Declined`,
   and move a finding between sections as its status changes.
-  Under an empty `## Open` write "Nothing left.", and leave out an empty Fixed or Declined.
+  Posted holds comments posted on a colleague's MR, per the `review-human` skill.
+  Under an empty `## Open` write "Nothing left.", or "Nothing to post." while Posted has comments,
+  and leave out an empty Posted, Fixed or Declined.
 - A declined finding gets a `- Declined:` field with the reason, right after `- Path:`.
 - The user runs vim from the reviewed repo's checkout.
   Put the command that checks out what was reviewed in the header,

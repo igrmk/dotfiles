@@ -49,8 +49,9 @@ When nothing is left and nothing is new, open with "Nothing left." and stay that
 Render only, as when the user asks what is left:
 
 - findings genuinely left: untouched or partly fixed, under their original numbers,
-  a partly fixed one rewritten to describe only what is left;
-- new findings, numbered after the highest number ever used in this conversation, for:
+  a partly fixed one rewritten to describe only what is left,
+  or per the `review-human` skill if posted;
+- new findings, numbered after the highest number used in this conversation or the review file, for:
   a defect a fix introduced, a comment or doc a fix left stale, a vague or ambiguous rewrite,
   and an improvement or simplification of a fix, with its evidence.
 
