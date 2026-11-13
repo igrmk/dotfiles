@@ -369,6 +369,7 @@ vim.api.nvim_create_user_command('Sudow', 'w !sudo tee % >/dev/null', {})
 vim.api.nvim_create_user_command('Clean', [[%s/\s\+$//e]], {})
 
 require('wink').setup()
+require('md_tags').setup()
 
 -- Dismissing is a keypress, which re-arms CursorHold, so the float would pop back.
 local diag_float_muted = false
