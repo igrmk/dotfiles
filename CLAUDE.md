@@ -18,6 +18,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   (e.g. package name and URL pairs in a shell array)
 - Write comments and Markdown per the reflow skill (`home/claude/dot-claude/skills/reflow/`)
 - Prefer one-line imperative comments (e.g. `# Disable dragging to prevent tab detaches`)
+- If the main worktree has `.claude/todo/`, its `TODO.md` holds the open work;
+  follow its `CLAUDE.md` when editing it, including its rule to push every edit.
+  A linked worktree has no `.claude/todo/` of its own.
 
 ## Installing tools
 
