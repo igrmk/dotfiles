@@ -287,6 +287,10 @@ require('lazy').setup({
                 end,
             },
         },
+        config = function(_, opts)
+            require('diffview').setup(opts)
+            require('diffview_history_table').setup()
+        end,
     },
     {
         -- Servers on lspconfig defaults, apart from basedpyright. clangd stays hand-rolled below:
