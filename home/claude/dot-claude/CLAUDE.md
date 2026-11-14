@@ -12,6 +12,8 @@
   put the corresponding changes in other repositories on a branch or in a worktree too,
   and name it the same if it makes sense.
 - Never use less precise synonyms: repeat the word if needed.
+- If any question asked by or to the user is still unanswered,
+  end the reply with `Unanswered questions: N`, where N is how many are unanswered
 - Before starting a piece of work, look for a matching task in the todo list, per the `todo` skill,
   and when one matches, move it to `### In Progress`.
   Skip this when the `todo` skill would do nothing else.
