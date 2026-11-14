@@ -73,8 +73,9 @@ in a project with tasks of its own, other projects' tasks would only get in the 
 
 ## Request
 
-A request that reads as a task, such as `/todo Try zellij`, adds it to `### Todo`,
-where the todo repository's `CLAUDE.md` places it.
+A request that reads as a task, such as `/todo Try zellij`, adds it:
+the task of the work at hand to the end of `### In Progress`,
+any other to `### Todo`, by priority and due date.
 Lines after the first go under it as its details.
 Any other request says what to do, such as starting, finishing or changing a task.
 A request that names no task, such as `/todo done`, means the task of the work at hand;
