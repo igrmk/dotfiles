@@ -6,12 +6,15 @@ description: >-
   and add new findings for defects the fixes introduced
   and for improvements or simplifications of the fixes.
   Use after the user applied fixes for a rendered findings list.
+argument-hint: "[focus]"
 ---
 
 # check-fixes
 
 A follow-up review of the fixes for the findings last rendered in this conversation.
 Report only; never fix anything.
+A request may name where to look hardest, such as a finding, a file or a concern:
+check that first and most closely, and still check the rest.
 
 ## Find the fix set
 
