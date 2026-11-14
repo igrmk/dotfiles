@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Use relative paths when referencing files (e.g., `home/git/` not `/Users/.../dotfiles/home/git/`)
 - Use conventional commits (e.g., `feat:`, `fix:`, `chore:`, `docs:`)
 - Don't use unnecessary flags (e.g., `git -C` when already in the working directory)
-- Use one-line commit messages and don't use heredocs when committing
+- Use short one-line commit messages and don't use heredocs when committing
 - Don't use `+` in commit messages (write "and" or use commas)
 - Capitalize acronyms and proper nouns in commit messages (e.g., `LSP`, `Python`)
 - Commit finished changes without asking
@@ -19,6 +19,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   (e.g. package name and URL pairs in a shell array)
 - Write comments and Markdown per the reflow skill (`home/claude/dot-claude/skills/reflow/`)
 - Prefer one-line imperative comments (e.g. `# Disable dragging to prevent tab detaches`)
+- When adding a key binding for macOS or Linux, add its counterpart for the other,
+  even if it replaces a default (e.g. kitty's `cmd+]` and `ctrl+shift+]`)
 
 ## Installing tools
 
