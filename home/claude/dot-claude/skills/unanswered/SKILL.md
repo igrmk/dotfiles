@@ -17,4 +17,5 @@ Ask the unanswered questions, the same ones the `Unanswered questions: N` line c
   - its options as a list, the recommended one first
 - If a question has a few options, ask it in a dialog with the AskUserQuestion tool.
   Add the option `Decide later`, which leaves the question unanswered.
+  Use checkboxes when the user may pick more than one.
 - With none, say `No unanswered questions`.
