@@ -21,6 +21,10 @@ check that first and most closely, and still check the rest.
 - The baseline is the commit or diff the findings were reported against.
   The fixed state is whatever replaced it: an amended commit, new commits, or the working tree.
   Diff the two; that diff is the fix set.
+- When the working tree is clean, the fixed state is HEAD:
+  note its hash when you start and check that commit, since the working tree may change meanwhile.
+  Read it with `git show` and `git diff`, run the checks in a temporary worktree at it,
+  and name it in the report.
 - Never touch the working tree or move HEAD.
   When the fixed state sits on another branch, work in the worktree that holds it,
   or in a temporary one created at it.
