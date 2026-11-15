@@ -1,16 +1,20 @@
 ---
 name: unanswered
 description: >-
-  List the questions of the conversation that are still unanswered.
+  Ask the questions of the conversation that are still unanswered,
+  the ones with a few options in a dialog.
   Use when the user types /unanswered or asks for the unanswered questions.
 ---
 
 # unanswered
 
-List the unanswered questions, the same ones the `Unanswered questions: N` line counts.
+Ask the unanswered questions, the same ones the `Unanswered questions: N` line counts.
 
-- Number them, oldest first.
+- Number them `Q1`, `Q2` and so on, oldest first.
 - Make each one answerable without scrolling back:
-  the question in bold, then, in a sentence or two, what it is about and its options,
-  the recommended one first.
+  - the question in bold
+  - what it is about, in a sentence or two
+  - its options as a list, the recommended one first
+- If a question has a few options, ask it in a dialog with the AskUserQuestion tool.
+  Add the option `Decide later`, which leaves the question unanswered.
 - With none, say `No unanswered questions`.
