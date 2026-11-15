@@ -60,7 +60,7 @@ With no request, or with tags alone, print tasks in these groups:
 
 In groups 2 and 3, the tasks in `### In Progress` come first, then those in `### Todo`,
 each in list order.
-Print each task's title line as the list has it.
+Print each task's title as the list has it.
 
 The current project tags are those whose rows in `TAGS.md` name a folder in the current path
 or the name in the current repository's `origin` URL.
