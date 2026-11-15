@@ -11,6 +11,9 @@
 - When the work in the current repository is on a branch or in a worktree,
   put the corresponding changes in other repositories on a branch or in a worktree too,
   and name it the same if it makes sense.
+- Drop a worktree once its branch is merged into the default branch
+  and it has no uncommitted changes, and the branch with it;
+  drop a temporary one you created once its task is done.
 - Never use less precise synonyms: repeat the word if needed.
 - Answer each question sent mid-turn in that turn's final message.
 - If any question asked by or to the user is still unanswered,

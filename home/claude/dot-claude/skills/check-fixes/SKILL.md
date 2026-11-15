@@ -28,6 +28,7 @@ check that first and most closely, and still check the rest.
 - Never touch the working tree or move HEAD.
   When the fixed state sits on another branch, work in the worktree that holds it,
   or in a temporary one created at it.
+  Drop every temporary worktree once the check is done.
   A subagent names the worktree in every command (e.g. `make -C <dir> test`):
   its `cd` lasts one Bash call, and the next command runs in the main checkout.
   Run experiments in a scratch database or a copy, never in shared data.
