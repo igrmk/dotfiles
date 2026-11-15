@@ -18,3 +18,4 @@
 - Before starting a piece of work, look for a matching task in the todo list, per the `todo` skill,
   and when one matches, move it to `### In Progress`.
   Skip this when the `todo` skill would do nothing else.
+- Keep a commit subject under 70 characters; make it longer only when it cannot be said in 70.
