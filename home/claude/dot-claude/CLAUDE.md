@@ -6,7 +6,7 @@
 - Write the findings of every `/code-review` to a file per the `review-file` skill,
   also when a findings tool reported them.
 - When fixing review findings, report the fixed and the declined ones separately,
-  with the reason for each decline.
+  with the reason for each decline, referring to the user as "the user", not "you".
   End the reply with their status lines, per the `review-status` skill.
 - When the work in the current repository is on a branch or in a worktree,
   put the corresponding changes in other repositories on a branch or in a worktree too,
