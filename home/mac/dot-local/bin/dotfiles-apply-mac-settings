@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Apply the macOS settings that differ from a fresh install, each with its default.
+# Safe to re-run, e.g. on a new machine or after changing a setting here.
+set -euo pipefail
+
+# Set a system keyboard shortcut by its number:
+# on or off, then the key's character code and key code, then the modifier flags.
+shortcut() {
+    defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add "$1" "
+        <dict>
+            <key>enabled</key><$2/>
+            <key>value</key>
+            <dict>
+                <key>type</key><string>standard</string>
+                <key>parameters</key>
+                <array><integer>$3</integer><integer>$4</integer><integer>$5</integer></array>
+            </dict>
+        </dict>"
+}
+
+# System keyboard shortcuts, by their numbers in com.apple.symbolichotkeys
+copy_screen_to_clipboard=29
+previous_input_source=60
+next_input_source=61
+spotlight=64
+
+# Keys, as their character code and key code
+key_j=(106 38)
+key_s=(115 1)
+key_space=(32 49)
+
+# Modifier flags
+cmd=1048576
+ctrl=262144
+
+# Show Spotlight with cmd+s, not cmd+space; on Linux, tapping super does it
+shortcut $spotlight true "${key_s[@]}" $cmd
+# Switch to the next input source with cmd+space, not ctrl+opt+space
+shortcut $next_input_source true "${key_space[@]}" $cmd
+# Turn off switching to the previous input source, on ctrl+space by default
+shortcut $previous_input_source false "${key_space[@]}" $ctrl
+# Copy a picture of the whole screen to the clipboard with cmd+j, not cmd+ctrl+shift+3;
+# on Linux, the PC keyboard's PrtScn does it
+shortcut $copy_screen_to_clipboard true "${key_j[@]}" $cmd
+
+# Apply the shortcuts without logging out
+/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
