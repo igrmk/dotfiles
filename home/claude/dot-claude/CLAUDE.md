@@ -14,7 +14,11 @@
 - Drop a worktree once its branch is merged into the default branch
   and it has no uncommitted changes, and the branch with it;
   drop a temporary one you created once its task is done.
-- Never use less precise synonyms: repeat the word if needed.
+- Never use less precise synonyms:
+  repeat the word if needed, and use the plain word over a paraphrase.
+  For example, call anything:
+  - hardcoded "hardcoded"
+  - cached "cached"
 - Answer each question sent mid-turn in that turn's final message.
 - If any question asked by or to the user is still unanswered,
   end the reply with `Unanswered questions: N`, where N is how many are unanswered
