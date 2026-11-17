@@ -19,6 +19,9 @@
   For example, call anything:
   - hardcoded "hardcoded"
   - cached "cached"
+- A rule the user states goes in a CLAUDE.md the user owns, not in memory:
+  a rule about one project in the nearest such file at or above it, any other here,
+  without work details, since this file is public.
 - Answer each question sent mid-turn in that turn's final message.
 - If any question asked by or to the user is still unanswered,
   end the reply with `Unanswered questions: N`, where N is how many are unanswered
