@@ -1,8 +1,9 @@
 ---
 name: reflow
 description: >-
-  Reflow Markdown prose and code comments at clause boundaries,
-  to the requested width, else the project's limit, else 100 columns.
+  Reflow plain-text prose docs, such as Markdown and Gherkin, and code comments
+  at clause boundaries, to the requested width, else the project's limit for that text,
+  else 100 columns, and in code never past the code limit.
   Use when writing or editing docs or comments, or when asked to reflow or rewrap prose.
 ---
 
@@ -10,7 +11,7 @@ description: >-
 
 Wrapping moves line breaks and never changes meaning.
 It rewords only a sentence you wrote in this task that cannot fit, keeping every fact.
-"Prose" means Markdown and code comments both.
+"Prose" means plain-text prose docs, such as Markdown and Gherkin, and code comments.
 Any other rewording, and cutting bloat, belong to the `rephrase` skill.
 Write new prose per its Rewrite section: read `../rephrase/SKILL.md`, do not run it.
 
@@ -24,10 +25,19 @@ Keep its paragraph breaks.
 
 ## Wrap
 
-Width: the requested one, else the project's configured limit, else 100 columns.
+Width: the requested one; otherwise:
+
+- in a prose doc, the limit the project sets for that file,
+  such as `.editorconfig`'s `max_line_length`, else 100 columns,
+  and never a limit set only for code;
+- in code, the limit for comments and docstrings, such as ruff's `max-doc-length`, else 100 columns,
+  capped by the code limit, such as ruff's `line-length` or `.clang-format`'s `ColumnLimit`.
+
 Measure the whole line, including indent and the `//` or `>` prefix,
 with tabs at the project's configured width (`.editorconfig`, `.clang-format`, modeline), else 4.
 
+A project's own line-break rule, such as one clause per line, wins over the layout rules below,
+except the one against breaking before syntax.
 In Markdown, put one sentence per line; a comment may keep short sentences together on one line.
 An abbreviation or a decimal point does not end a sentence.
 Break inside a sentence only past the width.

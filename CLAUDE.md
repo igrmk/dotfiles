@@ -17,7 +17,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   never a follow-up commit
 - Format matrix-like data Go-style: pad columns with spaces so columns start at the same offset
   (e.g. package name and URL pairs in a shell array)
-- Write comments and Markdown per the reflow skill (`home/claude/dot-claude/skills/reflow/`)
 - Prefer one-line imperative comments (e.g. `# Disable dragging to prevent tab detaches`)
 - When adding a key binding for macOS or Linux, add its counterpart for the other,
   even if it replaces a default (e.g. kitty's `cmd+]` and `ctrl+shift+]`)
