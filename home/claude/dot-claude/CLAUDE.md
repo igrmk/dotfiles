@@ -22,6 +22,7 @@
 - A rule the user states goes in a CLAUDE.md the user owns, not in memory:
   a rule about one project in the nearest such file at or above it, any other here,
   without work details, since this file is public.
+- Make an obvious fix to your own work and report it, rather than proposing it and waiting.
 - Answer each question sent mid-turn in that turn's final message.
 - If any question asked by or to the user is still unanswered,
   end the reply with `Unanswered questions: N`, where N is how many are unanswered
