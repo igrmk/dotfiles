@@ -2,7 +2,8 @@
 name: review-human
 description: >-
   Write open review findings as comments a colleague reads on the merge request:
-  a heading of the number and anchor, then one plain comment, with no summary and no fields.
+  a heading of the number and anchor, then one plain comment with no summary,
+  under its `- Status:` field in a review file.
   Use when the user asks for review findings as comments to paste on an MR,
   and when updating a review file whose header says its open findings are such comments.
 ---
@@ -19,19 +20,25 @@ When the user asks for the fields back, drop the sentence and give the open find
 
 ## Layout
 
-- The heading is the finding's number and anchor only, e.g. `` ### 5. `pkg/store/query.py:42` ``:
+- The heading is the finding's number and anchor only, e.g. `### 5. pkg/store/query.py:42`:
   an MR comment has no summary or category.
 - Anchor on a line of a file the MR changes, since GitLab takes line comments only there;
   for a defect elsewhere, anchor on the changed line that causes it.
-- Under the heading goes the comment, ready to paste on that line.
+- Under the heading and its `- Status:` field, per the `review-file` skill,
+  goes the comment, ready to paste on that line.
 - Say "here" for the anchor line;
-  name another place only when the reader needs it, by its repo and repo-relative path.
+  name another place only when the reader needs it, by its repo and repo-relative path,
+  in backticks, since GitLab renders a `__` in a bare path as bold.
 - End the comment without a full stop.
-- When the user says a comment is posted, move it from `## Open` to `## Posted`.
-  It leaves Posted for Fixed once the MR fixes it, or for Declined once the user accepts a decline.
-  A partly fixed one also moves to Fixed, and what is left becomes a new finding.
-- A comment leaving Open or Posted keeps its text as the record, with only the outcome above it:
+- When the user says a comment is posted, set its status to `Posted`.
+  It becomes `Fixed` once the MR fixes it, or `Declined` once the user accepts a decline.
+  A partly fixed one also becomes `Fixed`, and what is left becomes a new finding.
+  One not posted yet that the MR fixes in part stays `Open`, rewritten to ask only for what is left.
+- A comment no longer `Open` or `Posted` keeps its text as the record,
+  with only the outcome above it, after its status:
   a `- Fix:` naming the change, or a `- Declined:` with the reason.
+  A disputed decline keeps its `- Declined:` field,
+  with a `- Disputed:` field answering the reason right after it.
 
 ## The comment
 

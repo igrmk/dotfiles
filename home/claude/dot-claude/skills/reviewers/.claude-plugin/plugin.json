@@ -1,0 +1,6 @@
+{
+  "name": "reviewers",
+  "version": "0.1.0",
+  "description": "Show the plan's usage and the add-review review sessions of this session in a pane, with their states and whether they have seen the latest work",
+  "types": "./types/index.d.ts"
+}

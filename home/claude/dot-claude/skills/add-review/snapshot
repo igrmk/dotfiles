@@ -1,0 +1,103 @@
+#!/bin/sh
+# Print a snapshot of the work in this repository's working tree, per the add-review skill:
+# HEAD when nothing changed, else a commit of the working tree, untracked files included,
+# written through a copy of the index, so that the index and the working tree stay untouched.
+# Before the first commit, the snapshot is a commit with no parent.
+# With `tree`, print only the tree the snapshot would hold, writing nothing to the repository.
+# With `status`, print what that tree depends on, each part ending in a NUL:
+# the working tree's top, HEAD's tree, and the entries of `git status --porcelain -z`,
+# which name the changed paths but not their contents or modes,
+# so a caller that caches the tree compares those itself, as by size, time and mode.
+set -eu
+
+# The folders a snapshot leaves out, whatever git ignores, keeping what HEAD holds there:
+# the review files and the review sessions' worktrees
+excluded='.claude/reviews .claude/worktrees'
+
+# HEAD's tree, or the empty tree before the first commit
+head_tree=$(git rev-parse -q --verify 'HEAD^{tree}') || head_tree=$(git hash-object -t tree /dev/null)
+
+# List the changes a snapshot holds, over the whole working tree from any directory
+changes() {
+  # shellcheck disable=SC2046,SC2086 # Split the left-out folders into one pathspec each
+  git --no-optional-locks status --porcelain --untracked-files=all "$@" -- ':/' \
+    $(printf ' :!/%s' $excluded)
+}
+
+# Print the tree a snapshot would hold.
+# With `apart`, write its objects to a scratch folder that reads the repository's own,
+# so that the trees built to compare leave no loose objects behind.
+tree() {
+  # Take the list first, so that a failing git status ends the script rather than read as no change
+  listed=$(changes)
+  if [ -z "$listed" ]; then
+    echo "$head_tree"
+    return
+  fi
+  scratch=$(mktemp -d)
+  trap 'rm -rf "$scratch"' EXIT
+  # Exit on a signal too, as when a caller's timeout ends the script, so that the trap runs
+  trap 'exit 1' HUP INT TERM
+  index=$(git rev-parse --git-path index)
+  # Keep the index's time, so that git still checks the files changed in the second it was written
+  if [ -f "$index" ]; then
+    cp -p "$index" "$scratch/index"
+  fi
+  export GIT_INDEX_FILE="$scratch/index"
+  if [ "${1-}" = apart ]; then
+    mkdir -p "$scratch/objects/info"
+    git rev-parse --path-format=absolute --git-path objects >"$scratch/objects/info/alternates"
+    export GIT_OBJECT_DIRECTORY="$scratch/objects"
+  fi
+  cd "$(git rev-parse --show-toplevel)"
+  # Name a left-out folder only when no pattern ignores it, even one holding tracked files,
+  # since naming an ignored one fails git add,
+  # and git add takes no untracked file from an ignored one
+  outside=
+  for folder in $excluded; do
+    git check-ignore -q --no-index "$folder/" || outside="$outside :!/$folder"
+  done
+  # shellcheck disable=SC2086 # Split the left-out folders into one pathspec each
+  git add -A --no-warn-embedded-repo -- ':/' $outside
+  # Put back what HEAD holds in the left-out folders, as when HEAD tracks a review file,
+  # or nothing before the first commit,
+  # so that the snapshot matches HEAD there whether or not anything else changed
+  # shellcheck disable=SC2046,SC2086 # Split the left-out folders into one pathspec each
+  git reset -q -- $(printf ' :/%s' $excluded)
+  git write-tree
+}
+
+case ${1-} in
+  '')
+    # Carry set -e into the substitution, which bash does outside its POSIX mode only when told
+    snapshot_tree=$(set -e; tree)
+    # Tell the reviewers plugin of the Claude Code session that runs this where the work is,
+    # since a `cd` in a subshell around this script leaves the session's own directory elsewhere
+    if [ -n "${CLAUDE_CODE_SESSION_ID-}" ] && [ -n "${HOME-}" ]; then
+      work="$HOME/.claude/reviewers-work"
+      { mkdir -p "$work" && git rev-parse --show-toplevel >"$work/$CLAUDE_CODE_SESSION_ID"; } \
+        2>/dev/null || true
+    fi
+    if head=$(git rev-parse -q --verify 'HEAD^{commit}'); then
+      if [ "$snapshot_tree" = "$head_tree" ]; then
+        echo "$head"
+      else
+        git commit-tree "$snapshot_tree" -p "$head" -m snapshot
+      fi
+    else
+      # Write the empty tree, which git knows by its ID without holding it,
+      # in case the snapshot holds nothing
+      git hash-object -w -t tree /dev/null >/dev/null
+      git commit-tree "$snapshot_tree" -m snapshot
+    fi
+    ;;
+  tree) tree apart ;;
+  status)
+    printf '%s\0%s\0' "$(git rev-parse --show-toplevel)" "$head_tree"
+    changes -z
+    ;;
+  *)
+    echo "usage: snapshot [tree | status]" >&2
+    exit 2
+    ;;
+esac
