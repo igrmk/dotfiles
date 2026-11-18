@@ -70,6 +70,9 @@ Every rendered finding carries every field:
   Read line numbers from the code as it stands.
 - Drop declined findings; their numbers stay unused.
   A judgment call accepted as is counts as declined.
+  A decline that `/check-fixes` disputes stays among the open findings,
+  with a `Declined:` field holding the reason and a `Disputed:` field answering it,
+  both right after `Path:`.
 - Keep posted comments after the open ones, under a `# Posted` heading, each as its heading only.
 - Keep fixed findings after those, under a `# Fixed` heading,
   until the user asks what is left or narrows the list another way;

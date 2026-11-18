@@ -2,7 +2,8 @@
 name: check-fixes
 description: >-
   Check the fixes made for the last code review's findings:
-  say whether they are sound, list only what is genuinely left,
+  say whether they are sound, dispute declines whose reasons do not hold,
+  list only what is genuinely left,
   and add new findings for defects the fixes introduced
   and for improvements or simplifications of the fixes.
   Use after the user applied fixes for a rendered findings list.
@@ -11,7 +12,8 @@ argument-hint: "[focus]"
 
 # check-fixes
 
-A follow-up review of the fixes for the findings last rendered in this conversation.
+A follow-up review of the fixes for the findings last rendered in this conversation,
+and for the findings of the review file the request names, as Check each finding picks them.
 Report only; never fix anything.
 A request may name where to look hardest, such as a finding, a file or a concern:
 check that first and most closely, and still check the rest.
@@ -23,8 +25,12 @@ check that first and most closely, and still check the rest.
   Diff the two; that diff is the fix set.
 - When the working tree is clean, the fixed state is HEAD:
   note its hash when you start and check that commit, since the working tree may change meanwhile.
-  Read it with `git show` and `git diff`, run the checks in a temporary worktree at it,
-  and name it in the report.
+  Read it with `git show` and `git diff`, and name it in the report.
+  Run the checks in place only in a review session's own worktree,
+  else in a temporary worktree at it, since another session may change the working tree meanwhile.
+  In place, run the project's clean step first,
+  since build output that earlier snapshots left can make a check pass,
+  and run the checks in a temporary worktree instead when they leave such output with no clean step.
 - Never touch the working tree or move HEAD.
   When the fixed state sits on another branch, work in the worktree that holds it,
   or in a temporary one created at it.
@@ -35,7 +41,9 @@ check that first and most closely, and still check the rest.
 
 ## Check each finding
 
-For every finding in the last rendered list, except declined ones:
+For every finding that is not Declined, in the last rendered list or the review file,
+that the request names, that is still Open, Disputed or Posted, or whose code the fix set touches,
+leaving out the changes the request names as other sessions' work:
 
 - Read the fix, not just the diff hunk:
   the surrounding code, the comment it changed, the doc it points to.
@@ -45,22 +53,51 @@ For every finding in the last rendered list, except declined ones:
 - Check every fix for clarity as well as correctness.
   A vague or ambiguous rewrite is a new finding.
 - When soundness rests on a claim (a plan, a timing, a default), measure it rather than assume it.
-- Run the project's checks on the fixed state: build, vet, lint, tests.
+- Run the project's checks that touch nothing shared on the fixed state: build, vet, lint, tests.
+  Skip one that restarts or writes a shared service, such as a running container or its volumes,
+  and say so in the report.
   Report their results plainly, failures with output.
+
+## Check each decline
+
+For every finding of the last rendered list or the review file declined since,
+in this conversation or in a fix report, with the reason given there:
+
+- Weigh the reason for the decline against the code and the finding.
+- Dispute the decline when the reason does not hold,
+  such as when it rests on a wrong claim about the code or misreads the finding;
+  otherwise accept it.
+- Dispute a finding once: a decline repeated after a dispute stands.
+
+## Check the other changes
+
+A report may also describe changes that fix no finding, such as ones the user asked for.
+Review every such change in the fix set as a code review would, whether or not any finding is open,
+and report its defects as new findings.
+Leave out the changes the request names as other sessions' work,
+such as their commits on a branch that several sessions share.
 
 ## Report
 
 Lead with the verdict: sound or not, and what the checks said.
-Then one line tallying which findings are fixed.
-When nothing is left and nothing is new, open with "Nothing left." and stay that brief.
+Then one line tallying which findings are fixed and which declines are disputed.
+When nothing is left, nothing is new and no decline is disputed,
+open with "Nothing left." and stay that brief.
 
 Render only, as when the user asks what is left:
 
 - findings genuinely left: untouched or partly fixed, under their original numbers,
   a partly fixed one rewritten to describe only what is left,
-  or per the `review-human` skill if posted;
-- new findings, numbered after the highest number used in this conversation or the review file, for:
+  or per the `review-human` skill if posted.
+  A partly fixed finding kept in a review file, which keeps each finding's text as its record,
+  keeps its text instead, with a `- Progress:` field saying what is done and what is left,
+  except a posted comment, whose rest is a new comment to paste, per the `review-human` skill;
+- disputed declines, under their original numbers,
+  with `Declined:` and `Disputed:` fields per the `format-findings` skill;
+- new findings, with this conversation's letter,
+  numbered after the highest number with that letter in this conversation or the review file, for:
   a defect a fix introduced, a comment or doc a fix left stale, a vague or ambiguous rewrite,
-  and an improvement or simplification of a fix, with its evidence.
+  an improvement or simplification of a fix, with its evidence,
+  and a defect in a change that fixes no finding.
 
 Render findings per the `format-findings` skill.
