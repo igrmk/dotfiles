@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Install the latest Rust apt has: the highest versioned rustc-X.Y and cargo-X.Y packages.
+# update-alternatives points cargo, rustc and rustdoc in /usr/bin at the highest one installed.
+# Re-run to upgrade.
+set -euo pipefail
+
+sudo apt-get update
+version=$(apt-cache search --names-only '^rustc-[0-9]+\.[0-9]+$' | cut -d' ' -f1 | sort -V | tail -n1)
+version=${version#rustc-}
+if [[ -z $version ]]; then
+	echo 'apt has no versioned rustc-X.Y package' >&2
+	exit 1
+fi
+
+# Mark the installed versions automatically installed,
+# so apt autoremove drops those nothing else needs.
+# The install below marks the latest one manually installed again.
+mapfile -t installed < <(apt-mark showmanual | grep -E '^(rustc|cargo)-[0-9]+\.[0-9]+$')
+if ((${#installed[@]})); then
+	sudo apt-mark auto "${installed[@]}"
+fi
+sudo apt-get install -y "rustc-$version" "cargo-$version"
+
+# Remove the unversioned rustc and cargo, which hold the Ubuntu release's version
+# and own the /usr/bin names that update-alternatives manages
+sudo apt-get remove cargo rustc
+
+priority=$((${version%%.*} * 1000 + ${version#*.}))
+sudo update-alternatives --install /usr/bin/cargo cargo "/usr/bin/cargo-$version" "$priority" \
+	--slave /usr/bin/rustc rustc "/usr/bin/rustc-$version" \
+	--slave /usr/bin/rustdoc rustdoc "/usr/bin/rustdoc-$version"

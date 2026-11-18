@@ -2,7 +2,6 @@
 set -euo pipefail
 
 packages=(
-	cargo
 	curl
 	fd-find
 	ffmpeg
