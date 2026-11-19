@@ -10,7 +10,8 @@
   End the reply with their status lines, per the `review-status` skill.
 - When the work in the current repository is on a branch or in a worktree,
   put the corresponding changes in other repositories on a branch or in a worktree too,
-  and name it the same if it makes sense.
+  and name it the same if it makes sense, except in a repository you created for this work:
+  work on its default branch there.
 - Drop a worktree once its branch is merged into the default branch
   and it has no uncommitted changes, and the branch with it;
   drop a temporary one you created once its task is done.
