@@ -12,6 +12,7 @@ dirs=(
 	"$HOME/.config/mpv"
 	"$HOME/.config/nvim"
 	"$HOME/.config/pgcli"
+	"$HOME/.config/tmux"
 	"$HOME/.ipython/profile_default"
 	"$HOME/.local/bin"
 	"$HOME/.local/share/pandoc/filters"

@@ -96,7 +96,7 @@ function print_prompt
 PS1="\$(print_prompt '\\u' '\\h' '\\w' '\\d' '\\t')"
 
 case "$TERM" in
-xterm*|rxvt*)
+xterm*|rxvt*|tmux*|screen*)
    DOTFILES_PS1_SHOW_TITLE=true
    ;;
 *)

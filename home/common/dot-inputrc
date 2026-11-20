@@ -4,3 +4,7 @@ set keymap vi-insert
 Control-k: history-search-backward
 Control-j: history-search-forward
 Control-.: yank-last-arg
+# Ignore tmux's prefix outside tmux, where vi mode would run it as commands
+"\e[7344~": redraw-current-line
+set keymap vi-command
+"\e[7344~": redraw-current-line

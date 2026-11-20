@@ -1,0 +1,13 @@
+if [[ -n $ZSH_VERSION ]]; then
+	# Ignore tmux's prefix outside tmux, where vi mode would run it as commands
+	bindkey -M viins '\e[7344~' redisplay
+	bindkey -M vicmd '\e[7344~' redisplay
+
+	# Title tmux panes with the running command, else the directory, and report the directory
+	if [[ -n $TMUX ]]; then
+		_tmux_precmd() { print -rn -- $'\e]2;'"${(%):-%(4~|…/%3~|%~)}"$'\a\e]7;'"$PWD"$'\a'; }
+		_tmux_preexec() { print -rn -- $'\e]2;'"${(V)1}"$'\a\e]7;\a'; }
+		precmd_functions+=(_tmux_precmd)
+		preexec_functions+=(_tmux_preexec)
+	fi
+fi
