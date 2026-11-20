@@ -24,6 +24,7 @@
   a rule about one project in the nearest such file at or above it, any other here,
   without work details, since this file is public.
 - Make an obvious fix to your own work and report it, rather than proposing it and waiting.
+- Make a change the user suggests once you agree with it, rather than asking whether to.
 - Answer each question sent mid-turn in that turn's final message.
 - If any question asked by or to the user is still unanswered,
   end the reply with `Unanswered questions: N`, where N is how many are unanswered
