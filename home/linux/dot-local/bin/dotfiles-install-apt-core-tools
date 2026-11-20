@@ -12,6 +12,7 @@ packages=(
 	openssh-server
 	ripgrep
 	stow
+	tmux
 	tree-sitter-cli
 	zoxide
 	zplug
