@@ -118,6 +118,9 @@ setopt SHARE_HISTORY
 setopt HIST_IGNORE_SPACE
 setopt HIST_FIND_NO_DUPS
 
+# Load the commands other shells added to the history file
+alias hr='fc -RI'
+
 FNM_PATH="$HOME/.fnm"
 if command -v fnm >/dev/null 2>&1; then
 	eval "$(fnm env --use-on-cd --shell zsh)"
