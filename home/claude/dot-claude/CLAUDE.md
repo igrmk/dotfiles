@@ -29,6 +29,8 @@
   where it goes into a finding or a comment unless the user asks for the change.
 - Never read another machine's Claude Code data.
 - Answer each question sent mid-turn at the end of that turn's final message.
+- Say the important thing first and only then why:
+  an instruction before its reason, and a consequence before its cause.
 - If any question asked by or to the user is still unanswered,
   end the reply with `Unanswered questions: N`, where N is how many are unanswered
 - Before starting a piece of work, look for a matching task in the todo list, per the `todo` skill,
