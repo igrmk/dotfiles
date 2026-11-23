@@ -16,8 +16,11 @@ time_starttransfer:  %{time_starttransfer}
         time_total:  %{time_total}
 " -o /dev/null'
 
-# Remote hosts rarely have kitty's terminfo
-ssh() { TERM=xterm-256color command ssh "$@"; }
+if [ "$TERM" = xterm-kitty ] && [ -z "$SSH_CONNECTION" ]; then
+	ssh() { kitten ssh "$@"; }
+else
+	ssh() { TERM=xterm-256color command ssh "$@"; }
+fi
 
 alias mitmweb='mitmweb --ssl-insecure --no-web-open-browser'
 alias ports='netstat -an | grep LISTEN'
