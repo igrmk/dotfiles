@@ -106,7 +106,7 @@ command Clean %s/\s\+$//e
 
 Glaive codefmt plugin[mappings]
 nmap t /TODO<cr>
-nnoremap <leader>l :source $MYVIMRC \| let &ft = &ft \| DetectIndent<cr>
+nnoremap L :source $MYVIMRC \| let &ft = &ft \| DetectIndent<cr>
 
 map ,, :nohl<cr>
 map <f10> :echo "hi<" . synIDattr(synID(line("."),col("."),1),"name") . '> trans<' . synIDattr(synID(line("."),col("."),0),"name") . "> lo<" . synIDattr(synIDtrans(synID(line("."),col("."),1)),"name") . ">"<cr>
