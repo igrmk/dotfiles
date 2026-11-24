@@ -38,3 +38,4 @@
   Skip this when the `todo` skill would do nothing else.
 - Keep a commit subject under 70 characters; make it longer only when it cannot be said in 70.
 - Write plain-text prose docs and code comments per the `reflow` skill.
+- In `--` comments, mark list items with `*`, not `-`.
