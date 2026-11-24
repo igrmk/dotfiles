@@ -11,6 +11,15 @@ for file in ~/.source.d/*; do
 	[[ -f "$file" && -r "$file" ]] && source "$file"
 done
 
+# Truncate zplug's load logs instead of recreating them,
+# as a shell starting at the same time fails to open them while they're gone
+__zplug::io::file::rm_touch() {
+	mkdir -p ${1:h} && : >|$1
+}
+
+# Empty zplug's trace log past 1 MB, as zplug appends to it on every start and never trims it
+() { (( $# )) && : >|$1 } $ZPLUG_HOME/log/trace.log(NLk+1024)
+
 zplug romkatv/powerlevel10k, as:theme, depth:1
 
 if ! zplug check --verbose; then
