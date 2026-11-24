@@ -111,3 +111,15 @@ gfmcat() {
 	done < <(find "$output" -type f -name "pdf*.png" -print0 | sort -z)
 	rm -rf "$output"
 }
+
+# Mark the kitty tab busy while a command runs, except in tmux, which doesn't forward the mark
+# A program that reports its own status, such as Claude, replaces the mark
+if [[ -n $ZSH_VERSION && $TERM == xterm-kitty && -z $TMUX ]]; then
+	_kitty_status_preexec() { print -rn -- $'\e]7501;state=working:app=zsh\e\\'; }
+	# Leave clearing to kitty's shell integration where it runs, as it keeps done and error reports
+	_kitty_status_precmd() {
+		(( $+functions[_ksi_precmd] )) || print -rn -- $'\e]7501;state=clear\e\\'
+	}
+	preexec_functions+=(_kitty_status_preexec)
+	precmd_functions+=(_kitty_status_precmd)
+fi
