@@ -5,14 +5,15 @@ import type { Board, Reviewer, Usage } from '../types'
 
 const PANE = 'reviewers'
 const TITLE = 'Reviewers'
-// Leave 3 columns past the longest row of a review of one repository, 57 columns,
-// such as `rw-a  verifying  59m 59s  Sonnet 5.5  medium  11-19 03:03`,
+// Leave 3 columns past the longest row of a review of one repository, 63 columns,
+// the header of the rounds table,
+// `name  rounds  found  new  finished        took  snapshot  dirty`,
 // since the narrowest dock, 24 columns, would wrap it
-const COLUMNS = 60
+const COLUMNS = 66
 
 // Change a tag when its value's fields change:
 // it declines what an earlier version stored, which outlives a reload.
-const board = atom({ plugin: 'reviewers', key: 'board' } as const, { reviewers: [] } as Board, { shape: 'board-17' })
+const board = atom({ plugin: 'reviewers', key: 'board' } as const, { reviewers: [] } as Board, { shape: 'board-18' })
 const closed = atom({ plugin: 'reviewers', key: 'closed' } as const, false, { shape: 'closed-1' })
 const usage = atom({ plugin: 'reviewers', key: 'usage' } as const, { at: 0, windows: [] } as Usage, {
   shape: 'usage-4',
@@ -115,7 +116,10 @@ type Agent = {
 type Kind = NonNullable<Reviewer['task']>
 // What a review session's transcript tells,
 // with how many new findings its last result gave each letter
-type Facts = Pick<Reviewer, 'model' | 'effort' | 'rounds' | 'snapshots' | 'startedAt' | 'lastRoundAt'> & {
+type Facts = Pick<
+  Reviewer,
+  'model' | 'effort' | 'rounds' | 'snapshots' | 'startedAt' | 'lastRoundAt' | 'lastRoundMs'
+> & {
   task?: { kind: Kind; since: number }
   lastFound?: Record<string, number>
 }
@@ -230,6 +234,8 @@ function tally(sum: Tally, lines: string[]): void {
         }
         if (i < 0) continue
         sum.lastRoundAt = send.at
+        // The round ran from when its clock started, as the pane shows it, to the result.
+        sum.lastRoundMs = send.at - Math.max(sum.pending[0]?.at ?? send.at, sum.freedAt)
         sum.freedSnapshots = sum.pending[i]?.snapshots
         sum.pending.splice(0, i + 1)
         sum.freedAt = send.at
@@ -1483,29 +1489,32 @@ export const register: Register = on => {
     // A line under a table's header, as wide as its widest row
     const ruleOf = (lines: string[]) => '─'.repeat(Math.max(0, ...lines.map(line => Array.from(line).length)))
     // The second gives its rounds, the findings that carry its letter,
-    // how many of them its last result gave new, when its last round finished,
+    // how many of them its last result gave new, when its last round finished and how long it took,
     // the snapshots it last got,
     // and whether the work is dirty, as it has changed since, or ? when that is not known.
     const rounds = linesOf(
       [
-        ['name', 'rounds', 'found', 'new', 'finished', 'snapshot', 'dirty'],
+        ['name', 'rounds', 'found', 'new', 'finished', 'took', 'snapshot', 'dirty'],
         ...reviewers.map(one => [
           one.label,
           String(one.rounds),
           String(one.findings),
           one.lastFound !== undefined ? String(one.lastFound) : '',
           one.lastRoundAt !== undefined ? shortDateTime(one.lastRoundAt, now) : '',
+          one.lastRoundMs !== undefined ? elapsed(one.lastRoundMs) : '',
           (one.snapshots ?? []).map(snapshot => snapshot.slice(0, 8)).join(', '),
           one.hasNewChanges === undefined ? '?' : one.hasNewChanges ? 'yes' : 'no',
         ]),
       ],
-      // The name, the counts, a finish such as 11-19 03:03, a snapshot, and yes or no
+      // The name, the counts, a finish such as 11-19 03:03, a duration to 59m 59s, a snapshot,
+      // and yes or no
       [
         { width: 4 },
         { isNumber: true, width: 6 },
         { isNumber: true, width: 5 },
         { isNumber: true, width: 3 },
         { width: 11 },
+        { isNumber: true, width: 7 },
         { width: 8 },
         { width: 5 },
       ],

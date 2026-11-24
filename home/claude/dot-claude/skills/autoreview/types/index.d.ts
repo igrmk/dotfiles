@@ -32,6 +32,9 @@ export type Reviewer = {
   lastFound?: number
   // When its last round finished, by its result, in milliseconds since the epoch
   lastRoundAt?: number
+  // How long its last round took, in milliseconds:
+  // from when its clock started, as the pane shows it while it is busy, to its result
+  lastRoundMs?: number
   // The snapshot commits of its last task not withdrawn, one per repository
   snapshots?: string[]
   // Whether a snapshot taken now would hold another tree than those, in any repository;
