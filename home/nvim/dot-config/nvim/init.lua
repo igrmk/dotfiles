@@ -370,7 +370,7 @@ function _G.title_with_shortened_path()
     if vim.fn.strchars(path) > 20 then
         path = vim.fn.pathshorten(path)
     end
-    return path == '' and '≡' or '≡ ' .. path
+    return path == '' and '⌶' or '⌶ ' .. path
 end
 opt.title = true
 opt.titlestring = '%{v:lua.title_with_shortened_path()}'
