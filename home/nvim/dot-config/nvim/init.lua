@@ -365,6 +365,16 @@ opt.fixendofline = false
 opt.foldenable = false
 opt.langmap = 'ФИСВУАПРШОЛДЬТЩЗЙКЫЕГМЦЧНЯ;ABCDEFGHIJKLMNOPQRSTUVWXYZ,фисвуапршолдьтщзйкыегмцчня;abcdefghijklmnopqrstuvwxyz'
 
+function _G.title_with_shortened_path()
+    local path = vim.fn.expand('%:~:.')
+    if vim.fn.strchars(path) > 20 then
+        path = vim.fn.pathshorten(path)
+    end
+    return path == '' and '≡' or '≡ ' .. path
+end
+opt.title = true
+opt.titlestring = '%{v:lua.title_with_shortened_path()}'
+
 vim.api.nvim_create_user_command('Sudow', 'w !sudo tee % >/dev/null', {})
 vim.api.nvim_create_user_command('Clean', [[%s/\s\+$//e]], {})
 
