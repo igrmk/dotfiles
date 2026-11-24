@@ -20,6 +20,7 @@
   For example, call anything:
   - hardcoded "hardcoded"
   - cached "cached"
+  - a UI "UI"
 - A rule the user states goes in a CLAUDE.md the user owns, not in memory:
   a rule about one project in the nearest such file at or above it, any other here,
   without work details, since this file is public.
