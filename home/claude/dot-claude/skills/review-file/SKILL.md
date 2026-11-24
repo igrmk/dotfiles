@@ -23,6 +23,8 @@ the file keeps every finding in place, per The file.
   Keep one file per conversation and letter, except per Review sessions.
   Leave out `-<prefix>` when no letter was given,
   and add `-<seq>`, numbered from 2, only when another conversation already used the name.
+  For a review of several repos, the default place is the directory the session was started in,
+  or, when that directory is inside a repo, that repo's main worktree.
 - A session that entered a worktree with `EnterWorktree` cannot write to the main worktree:
   to write the file there, leave the worktree with `ExitWorktree`, keeping it, write the file,
   and enter the worktree again with `EnterWorktree` and its path.
@@ -58,6 +60,8 @@ the file keeps every finding in place, per The file.
   Put the command that checks out what was reviewed in the header,
   adding `git pull` when the local branch is behind its upstream.
   When the branch is checked out in another worktree, `cd` to that worktree instead.
+  For several repos, give each its own such line, all worded alike,
+  in the order the review's target names them.
 - Once the reviewed branch is merged into the default branch,
   point that command at the main worktree, since the branch's worktree is dropped after the merge.
 - Put the command that resumes the conversation that ran the review in the header,
@@ -74,6 +78,8 @@ the file keeps every finding in place, per The file.
 - Whenever you create the file, give the command to open it:
   the reviewed repo's checkout command from the header, followed by `&& vi <path>`,
   the path relative to the directory that command enters when the file is under it, else absolute.
+  For several repos,
+  the command is `cd <the directory that holds the file's .claude folder> && vi <path>`.
 - Update the file on every change to the list, `/check-fixes` results included,
   editing the lines that change, and write it whole only when creating it,
   or when first updating a file in an older layout to put it in this one,
@@ -86,7 +92,7 @@ the file keeps every finding in place, per The file.
 
 ## Review sessions
 
-The fixing session of review sessions, as the `add-review` skill names them,
+The fixing session of review sessions, as the `autoreview` skill names them,
 keeps one file for the findings of all of them, with no letter in its name.
 
 - Add each finding as it arrives, keeping the review session's wording,
@@ -119,6 +125,10 @@ keeps one file for the findings of all of them, with no letter in its name.
 ## Paths
 
 - A location in the reviewed repo is `<repo-relative path>:<line>`.
+  In a review of several repos,
+  it is the path of the file in the checkout that its repo's checkout line enters,
+  not in a review session's worktree,
+  relative to the directory the open command enters when it is under that directory, else absolute.
 - Write a location in the file bare, with no backticks around it,
   except in a comment to paste on an MR, per the `review-human` skill,
   where it goes in backticks, since GitLab renders a `__` in a bare path as bold.
@@ -138,7 +148,7 @@ Attach `<review session name>`, session `<session ID>`, from `<directory>`: `cla
 ```
 
 The Attach line goes only in a fixing session's file, one per review session,
-with the session ID that the `add-review` skill names,
+with the session ID that the `autoreview` skill names,
 the directory the review session was started in, from which a resume of it runs,
 and as the job ID the session ID's first 8 characters,
 which `claude attach` takes even where another job's name holds the review session's.

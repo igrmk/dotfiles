@@ -90,6 +90,8 @@ Render only, as when the user asks what is left:
 - findings genuinely left: untouched or partly fixed, under their original numbers,
   a partly fixed one rewritten to describe only what is left,
   or per the `review-human` skill if posted.
+  Call one that is open for the user's answer, as its `- Progress:` field says,
+  open, not something the review waits on, since it holds nothing up.
   A partly fixed finding kept in a review file, which keeps each finding's text as its record,
   keeps its text instead, with a `- Progress:` field saying what is done and what is left,
   except a comment for an MR, per the `review-human` skill:

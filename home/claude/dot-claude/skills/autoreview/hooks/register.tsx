@@ -5,13 +5,14 @@ import type { Board, Reviewer, Usage } from '../types'
 
 const PANE = 'reviewers'
 const TITLE = 'Reviewers'
-// Leave room past the longest row, such as `Usage: 5h 100%, week 100%, spend 100%`,
-// since the narrowest dock, 24 columns, feels cramped
-const COLUMNS = 42
+// Leave 3 columns past the longest row of a review of one repository, 57 columns,
+// such as `rw-a  verifying  59m 59s  Sonnet 5.5  medium  11-19 03:03`,
+// since the narrowest dock, 24 columns, would wrap it
+const COLUMNS = 60
 
 // Change a tag when its value's fields change:
 // it declines what an earlier version stored, which outlives a reload.
-const board = atom({ plugin: 'reviewers', key: 'board' } as const, { reviewers: [] } as Board, { shape: 'board-11' })
+const board = atom({ plugin: 'reviewers', key: 'board' } as const, { reviewers: [] } as Board, { shape: 'board-17' })
 const closed = atom({ plugin: 'reviewers', key: 'closed' } as const, false, { shape: 'closed-1' })
 const usage = atom({ plugin: 'reviewers', key: 'usage' } as const, { at: 0, windows: [] } as Usage, {
   shape: 'usage-4',
@@ -23,27 +24,35 @@ const WINDOWS: Record<string, string> = { five_hour: '5h', seven_day: 'week', sp
 
 // A commit as git prints it, from an abbreviation to a full SHA-256 ID
 const COMMIT = '[0-9a-f]{7,64}'
-// The opening of a task the add-review skill hands a review session, with its snapshot
-const opening = (commit: string) => `Snapshot ${commit}: run /`
+// The snapshots of a task, one per repository, as the autoreview skill lists them
+const COMMITS = `${COMMIT}(?:, ${COMMIT})*`
+// The opening of a task the autoreview skill hands a review session, with its snapshots
+const opening = (commits: string) => `Snapshots? ${commits}: run /`
 // A task by its opening line, which starts a prompt or a message from another session,
 // and nothing that only quotes one:
-// the snapshot, the skill it runs, and for a check, whether it checks a fix report
-const TASK = new RegExp(
-  `(?:^|<cross-session-message[^>]*>\\s*)${opening(`(${COMMIT})`)}(code-review|check-fixes)( on this fix report)?`,
-)
-// A withdrawal of the tasks at a snapshot by its opening line, as the add-review skill sends one
-const WITHDRAWAL = new RegExp(`(?:^|<cross-session-message[^>]*>\\s*)Withdraw snapshot (${COMMIT})\\.`)
+// the snapshots and the skill it runs
+const TASK = new RegExp(`(?:^|<cross-session-message[^>]*>\\s*)${opening(`(${COMMITS})`)}(code-review|check-fixes)`)
+// The opening of a withdrawal of the tasks whose snapshots it names, one or several
+const withdrawal = (commits: string) => `Withdraw snapshots? ${commits}\\.`
+// A withdrawal by its opening line, as the autoreview skill sends one
+const WITHDRAWAL = new RegExp(`(?:^|<cross-session-message[^>]*>\\s*)${withdrawal(`(${COMMITS})`)}`)
 // The transcript lines that may hold a task, a withdrawal or a result
-const TASK_OR_RESULT = new RegExp(`${opening(COMMIT)}|Withdraw snapshot ${COMMIT}\\.|"name":"SendMessage"`)
+const TASK_OR_RESULT = new RegExp(`${opening(COMMITS)}|${withdrawal(COMMITS)}|"name":"SendMessage"`)
+// A line's time, and the opening of a line the engine writes as it queues a message for the session
+const TIMESTAMP = /"timestamp":"([^"]+)"/
+const QUEUED = '{"type":"queue-operation"'
 // The model and the effort a transcript records for each request
 const MODEL_OR_EFFORT = /"model":"(claude-[^"]*)"|"effort":"(low|medium|high|xhigh|max)"/g
-// A result's first line names the add-review skill, whatever the case
-const RESULT = /add-review/i
+// A result's first line names the autoreview skill, whatever the case,
+// or the add-review skill, as one sent under the rules from before its rename does,
+// and not as part of a session's name, which may hold it,
+// as `autoreview-rw-a` or `autoreview-2-rw-a`
+const RESULT = /\b(?:autoreview|add-review)\b(?!-)/i
 // A finding's heading in a result, such as `### A12.`, or `## A12.` per the format-findings skill
 const RESULT_HEADING = /^#{2,3} ([A-Z]\d+)\. /gm
 // A subagent's ID, which a message to a subagent may name, unlike one to a session
 const SUBAGENT = /^a[0-9a-f]{16}$/
-// The infix of a review session's name, `<session name>-rw-<letter>`, per the add-review skill
+// The infix of a review session's name, `<session name>-rw-<letter>`, per the autoreview skill
 const INFIX = '-rw-'
 const NAME = new RegExp(`${INFIX}[a-z]$`)
 
@@ -54,6 +63,9 @@ const RESUME = /claude -r ([0-9a-f-]{36})/g
 const ATTACH = /^Attach `([^`]+)`(?:,\s+session `([0-9a-f-]+)`)?(?:,\s+from `[^`]*`)?:/gm
 // The review file's findings, by the letter of their numbers, which is their review session's
 const HEADING = /^### ([A-Z])\d+\./gm
+// A checkout line of the review file's header, one per repository, with the directory it enters,
+// also when reworded, as after a merge, and broken before its command
+const CHECKOUT = /^Check out what was reviewed\b.*?(?:\n.*?)??`cd ([^`]+?)(?: && [^`]*)?`/gm
 
 // A row with a clock redraws every tick.
 // Polls come every few seconds while a review session is busy, else rarely,
@@ -70,14 +82,21 @@ const TRANSCRIPTS_MS = 60000
 const MAX_SUCCESSORS = 5
 // How many main worktrees where fixing sessions found their review files all sessions keep
 const MAX_FILE_ROOTS = 10
-// How much of a blocked or failed review session's last words its row shows
-const DETAIL_CHARS = 200
 // How long a changed transcript's facts stay cached while its review session's status holds
 const FACTS_MS = 15000
 // How long the list of sessions stays cached while no session's status file changes,
 // and for less time while a row is busy or waiting
 const AGENTS_MS = 300000
 const LIVE_AGENTS_MS = 30000
+// How long a gap between polls means the machine slept, whose time counts as no quiet time
+const AWAKE_MS = 120000
+// How long a review session, busy or idle with its task out,
+// goes without writing to its transcript or its subagents'
+// before its row shows it nudging and this session gets a message, unless the review is paused,
+// as it may be stuck, or only on a long command
+const QUIET_MS = 600000
+// How long after a notice that did not enter it goes again
+const RETRY_MS = 60000
 // Stat at most this many changed paths for the key of the tree,
 // so that a tree with many untracked files costs no more than this,
 // and past them build the tree again once a minute, since their edits change nothing the key holds
@@ -91,25 +110,30 @@ type Agent = {
   name?: string
   status?: string
   state?: string
-  waitingFor?: string
   startedAt?: number
 }
 type Kind = NonNullable<Reviewer['task']>
-// What a review session's transcript tells
-type Facts = Pick<Reviewer, 'model' | 'effort' | 'rounds' | 'snapshot' | 'startedAt' | 'lastRound' | 'lastRoundMs'> & {
+// What a review session's transcript tells,
+// with how many new findings its last result gave each letter
+type Facts = Pick<Reviewer, 'model' | 'effort' | 'rounds' | 'snapshots' | 'startedAt' | 'lastRoundAt'> & {
   task?: { kind: Kind; since: number }
+  lastFound?: Record<string, number>
 }
 // What the lines of a transcript read so far tell:
 // the tasks whose results have not come, less those withdrawn,
 // when the task before the current one ended, by its result or its withdrawal,
-// the snapshot of the newest task a result freed,
+// the snapshots of the newest task a result freed,
 // the results sent whose tool results have not come, by their tool uses' IDs,
+// the highest number its results gave each letter, the time of its last line,
 // and the rest of the facts
+type Task = { snapshots: string[]; kind: Kind; at: number }
 type Tally = Omit<Facts, 'task'> & {
-  pending: { snapshot: string; kind: Kind; at: number }[]
+  pending: Task[]
   freedAt: number
-  freedSnapshot?: string
+  freedSnapshots?: string[]
   sends: { id: string; at: number; message: string }[]
+  highest: Record<string, number>
+  lastWriteAt?: number
 }
 type Part = {
   type?: string
@@ -133,21 +157,35 @@ function textOf(content: unknown): string {
     .join('')
 }
 
+// Whether a task names a commit among its snapshots, either of the two maybe abbreviated
+function holds(task: Task, commit: string): boolean {
+  return task.snapshots.some(one => one.startsWith(commit) || commit.startsWith(one))
+}
+
 // Add what the complete lines of a review session's transcript tell to a tally:
 // the model and the effort of its requests,
 // the tasks the fixing session sent, as a prompt, a message, or a message queued mid-turn,
-// and the results it sent back, whose first line names the add-review skill and the snapshot.
-// A task that comes again before its result, as when a resume repeats it, counts once.
-// A result frees its task and every older one, since a review session does its tasks in order,
+// and the results it sent back,
+// whose first line names the autoreview skill and the task's snapshots, or one of them.
+// A task that comes again before its result, as when a resume repeats it, counts once:
+// one that names the same snapshots,
+// as tasks in a row share those of the repositories that kept theirs.
+// A result frees the oldest task that holds every snapshot it names, and every older one,
+// else, as when it names the snapshots of two tasks, up to the newest task that holds the most,
+// since a review session does its tasks in order,
 // once its tool result says the send went through,
 // as a send to a name no session has, such as the fixing session's old one, frees nothing.
-// A withdrawal drops the tasks at its snapshot, which then count as no round,
-// and leaves the snapshot of the newest task still pending, else of the newest freed,
+// A withdrawal drops the tasks all of whose snapshots it names, which then count as no round,
+// and leaves the snapshots of the newest task still pending, else of the newest freed,
 // as the review session handles no withdrawn one.
 // A message to a subagent's ID is no result,
 // and the rules keep any other message from opening like one.
 function tally(sum: Tally, lines: string[]): void {
   for (const line of lines) {
+    // The time of the session's last line,
+    // less one the engine queued for it, as a message on its way
+    const [, stamp] = line.startsWith(QUEUED) ? [] : (line.match(TIMESTAMP) ?? [])
+    if (stamp !== undefined) sum.lastWriteAt = Math.max(sum.lastWriteAt ?? 0, Date.parse(stamp) || 0)
     for (const [, model, effort] of line.matchAll(MODEL_OR_EFFORT)) {
       if (model !== undefined) sum.model = model
       if (effort !== undefined) sum.effort = effort
@@ -179,15 +217,33 @@ function tally(sum: Tally, lines: string[]): void {
         const [send] = k < 0 ? [] : sum.sends.splice(k, 1)
         if (send === undefined || part.is_error === true || /"success":\s*false/.test(textOf(part.content))) continue
         const first = send.message.split('\n')[0] ?? ''
-        const named = first.match(new RegExp(COMMIT, 'g')) ?? []
-        const i = sum.pending.findIndex(task => named.some(one => task.snapshot.startsWith(one) || one.startsWith(task.snapshot)))
+        // Of the commits it names, those no pending task holds, as the start of a range,
+        // count for none.
+        const named = (first.match(new RegExp(COMMIT, 'g')) ?? []).filter(one =>
+          sum.pending.some(task => holds(task, one)),
+        )
+        let i = sum.pending.findIndex(task => named.length > 0 && named.every(one => holds(task, one)))
+        if (i < 0) {
+          const counts = sum.pending.map(task => named.filter(one => holds(task, one)).length)
+          const most = Math.max(0, ...counts)
+          i = most > 0 ? counts.lastIndexOf(most) : -1
+        }
         if (i < 0) continue
-        // The round ran from when the review session started on the oldest task it frees.
-        sum.lastRoundMs = send.at - Math.max(sum.pending[0]?.at ?? send.at, sum.freedAt)
-        sum.freedSnapshot = sum.pending[i]?.snapshot
+        sum.lastRoundAt = send.at
+        sum.freedSnapshots = sum.pending[i]?.snapshots
         sum.pending.splice(0, i + 1)
         sum.freedAt = send.at
-        sum.lastRound = new Set([...send.message.matchAll(RESULT_HEADING)].map(([, number]) => number)).size
+        // A finding is new when its number passes the highest that earlier results gave its letter.
+        const highest = { ...sum.highest }
+        const found: Record<string, number> = {}
+        for (const id of new Set([...send.message.matchAll(RESULT_HEADING)].map(([, id]) => id ?? ''))) {
+          const letter = id.slice(0, 1)
+          const number = Number(id.slice(1))
+          if (number > (sum.highest[letter] ?? 0)) found[letter] = (found[letter] ?? 0) + 1
+          highest[letter] = Math.max(highest[letter] ?? 0, number)
+        }
+        sum.highest = highest
+        sum.lastFound = found
       }
       continue
     }
@@ -199,34 +255,38 @@ function tally(sum: Tally, lines: string[]): void {
           : ''
     // The skill text that follows a task may repeat it in its arguments.
     if (text.startsWith('Base directory for this skill:')) continue
-    const [, withdrawn] = text.match(WITHDRAWAL) ?? []
-    if (withdrawn !== undefined) {
-      const isWithdrawn = (task: { snapshot: string }) =>
-        task.snapshot.startsWith(withdrawn) || withdrawn.startsWith(task.snapshot)
+    const [, withdrawnList] = text.match(WITHDRAWAL) ?? []
+    if (withdrawnList !== undefined) {
+      const withdrawn = withdrawnList.split(/, /)
+      const isWithdrawn = (task: Task) =>
+        task.snapshots.every(snapshot => withdrawn.some(one => snapshot.startsWith(one) || one.startsWith(snapshot)))
       const kept = sum.pending.filter(task => !isWithdrawn(task))
       // The task under way ends with its withdrawal, and the next one starts then, as on a result.
       if (sum.pending[0] !== undefined && isWithdrawn(sum.pending[0])) sum.freedAt = at
-      if (kept.length < sum.pending.length) sum.snapshot = kept.at(-1)?.snapshot ?? sum.freedSnapshot
+      if (kept.length < sum.pending.length) sum.snapshots = kept.at(-1)?.snapshots ?? sum.freedSnapshots
       sum.rounds -= sum.pending.length - kept.length
       sum.pending = kept
       continue
     }
-    const [, commit, skill, isFixReport] = text.match(TASK) ?? []
-    if (commit === undefined) continue
-    const kind: Kind = skill === 'code-review' ? 'reviewing' : isFixReport ? 'checking fixes' : 'checking changes'
-    const isSame = (task: { snapshot: string; kind: Kind }) =>
-      task.kind === kind && (task.snapshot.startsWith(commit) || commit.startsWith(task.snapshot))
+    const [, listed, skill] = text.match(TASK) ?? []
+    if (listed === undefined) continue
+    const snapshots = listed.split(/, /)
+    const kind: Kind = skill === 'code-review' ? 'reviewing' : 'verifying'
+    const isSame = (task: Task) =>
+      task.kind === kind &&
+      task.snapshots.length === snapshots.length &&
+      snapshots.every(one => holds(task, one))
     if (sum.pending.some(isSame)) continue
     sum.startedAt ??= at
-    sum.snapshot = commit
-    sum.pending.push({ snapshot: commit, kind, at })
+    sum.snapshots = snapshots
+    sum.pending.push({ snapshots, kind, at })
     sum.rounds += 1
   }
 }
 
 // Return the facts a tally tells, with its oldest task,
 // timed from when it arrived or the task before it ended, whichever is later.
-function factsOf({ pending, freedAt, freedSnapshot, sends, ...facts }: Tally): Facts {
+function factsOf({ pending, freedAt, freedSnapshots, sends, highest, lastWriteAt, ...facts }: Tally): Facts {
   const oldest = pending[0]
   return { ...facts, task: oldest && { kind: oldest.kind, since: Math.max(oldest.at, freedAt) } }
 }
@@ -254,9 +314,16 @@ function elapsed(ms: number): string {
   return minutes === 0 ? `${seconds}s` : `${minutes}m ${two(seconds % 60)}s`
 }
 
-// Return a count of findings in words, such as `2 findings`, `1 finding` or `no findings`.
-function findingsOf(count: number): string {
-  return count === 0 ? 'no findings' : count === 1 ? '1 finding' : `${count} findings`
+// Return when to tell next of a review session quiet since a given time, if it is due now,
+// by when it was last told of: once it is quiet for QUIET_MS, then each time that time doubles
+function quietNotice(
+  told: { quietSince: number; due: number } | undefined,
+  quietSince: number,
+  now: number,
+): { quietSince: number; due: number } | undefined {
+  const due = told?.quietSince === quietSince ? told.due : QUIET_MS
+  const quiet = now - quietSince
+  return quiet < due ? undefined : { quietSince, due: 2 * quiet }
 }
 
 // Return a time in milliseconds since the epoch as the local date and time,
@@ -265,6 +332,33 @@ function dateTime(ms: number): string {
   const at = new Date(ms)
   const two = (part: number) => String(part).padStart(2, '0')
   return `${at.getFullYear()}-${two(at.getMonth() + 1)}-${two(at.getDate())} ${two(at.getHours())}:${two(at.getMinutes())}`
+}
+
+// Return a time as its time of day when it is today, such as `14:05`,
+// else with its month and day, such as `11-19 03:03`.
+function shortDateTime(ms: number, now: number): string {
+  const full = dateTime(ms)
+  return full.slice(0, 'yyyy-mm-dd'.length) === dateTime(now).slice(0, 'yyyy-mm-dd'.length)
+    ? full.slice(-'00:00'.length)
+    : full.slice('yyyy-'.length)
+}
+
+// Return a table's rows as lines, two spaces between its columns,
+// each cell padded to its column's width, from the left in a column of numbers,
+// and each column at least as wide as its widest value may be,
+// so that a change of a cell, as of a state from idle to verifying, moves no column.
+function linesOf(rows: string[][], columns: { isNumber?: boolean; width: number }[]): string[] {
+  const width = (cell: string) => Array.from(cell).length
+  const widths = columns.map((one, i) => Math.max(one.width, ...rows.map(row => width(row[i] ?? ''))))
+  return rows.map(row =>
+    row
+      .map((cell, i) => {
+        const pad = ' '.repeat((widths[i] ?? 0) - width(cell))
+        return columns[i]?.isNumber ? pad + cell : cell + pad
+      })
+      .join('  ')
+      .trimEnd(),
+  )
 }
 
 // Turn the rate limits a response reported into a reading taken at `at`.
@@ -377,8 +471,8 @@ export const register: Register = on => {
 
     const home = (await $.env.get('HOME')) ?? ''
     usageFile = `${home}/.claude/reviewers-usage-4.json`
-    // The add-review skill's snapshot script, which builds the trees this pane compares
-    const script = `${home}/.claude/skills/add-review/snapshot`
+    // The autoreview skill's snapshot script, which builds the trees this pane compares
+    const script = `${$.plugin.root}/snapshot`
 
     // Run a command and resolve its trimmed output, or undefined on failure,
     // as when it cannot start or times out.
@@ -425,7 +519,7 @@ export const register: Register = on => {
       })
     }
 
-    // The tree a snapshot taken now would hold,
+    // The tree a snapshot taken now would hold, in each directory of the work,
     // cached until a snapshot run forgets it or what it depends on changes:
     // the working tree, HEAD's tree, the changed paths, their sizes, times and executable bits,
     // the target of each that is a link, and the commit of each that holds a repository of its own,
@@ -439,22 +533,36 @@ export const register: Register = on => {
     // a change the wait holds back gets one build when the wait ends,
     // and the next only at a regular poll.
     // Past the cap of changed paths, it also starts once a period after a build that worked.
-    let treeKey: string | undefined
-    let tree: string | undefined
-    let isBuilding = false
-    let builtAt = 0
-    let builtPeriod = 0
-    // Counts the times the cached tree was forgotten, so that a build that spans one is not cached
+    // Per directory of the work, the key and the tree cached for it, whether a build runs,
+    // when the last one ended and in which period,
+    // and whether a build is due once the wait ends and whether the last build was such a one
+    type TreeCache = {
+      key?: string
+      tree?: string
+      isBuilding: boolean
+      builtAt: number
+      builtPeriod: number
+      isFollowUpDue: boolean
+      wasFollowUp: boolean
+    }
+    const trees = new Map<string, TreeCache>()
+    // Counts the times the cached trees were forgotten,
+    // so that a build that spans one is not cached
     let generation = 0
-    // Whether a build is due once the wait ends, and whether the last build was such a one
-    let isFollowUpDue = false
-    let wasFollowUp = false
-    // Forget the cached tree of the work, so that the next poll builds it again.
+    // Forget the cached trees of the work, so that the next poll builds them again.
     const forgetTree = () => {
-      treeKey = undefined
+      for (const cache of trees.values()) cache.key = undefined
       generation += 1
     }
     const treeNow = async (dir: string, now: number): Promise<string | undefined> => {
+      const c = trees.get(dir) ?? {
+        isBuilding: false,
+        builtAt: 0,
+        builtPeriod: 0,
+        isFollowUpDue: false,
+        wasFollowUp: false,
+      }
+      trees.set(dir, c)
       const status = await run([script, 'status'], { cwd: dir })
       if (status === undefined) return undefined
       const [top = '', , ...entries] = status.split('\0').filter(Boolean)
@@ -470,7 +578,7 @@ export const register: Register = on => {
         }),
       )
       const period = Math.floor(now / MAX_STATS_MS)
-      const isPeriodDue = entries.length > MAX_STATS && tree !== undefined && period !== builtPeriod
+      const isPeriodDue = entries.length > MAX_STATS && c.tree !== undefined && period !== c.builtPeriod
       const marks =
         paths.length === 0
           ? ''
@@ -484,35 +592,35 @@ export const register: Register = on => {
               ...paths.map(path => `${top}/${path}`),
             ])
       const key = `${dir}\0${status}\0${stats.join(' ')}\0${marks}`
-      if ((key === treeKey && !isPeriodDue) || isBuilding) return tree
+      if ((key === c.key && !isPeriodDue) || c.isBuilding) return c.tree
       // Come back once the last build is far enough behind, rather than at the next scheduled poll,
       // unless the last build came that way.
-      if (now - builtAt < POLL_MS) {
-        if (!wasFollowUp) {
-          isFollowUpDue = true
-          void schedule(builtAt + POLL_MS - now).catch(() => undefined)
+      if (now - c.builtAt < POLL_MS) {
+        if (!c.wasFollowUp) {
+          c.isFollowUpDue = true
+          void schedule(c.builtAt + POLL_MS - now).catch(() => undefined)
         }
-        return tree
+        return c.tree
       }
-      wasFollowUp = isFollowUpDue
-      isFollowUpDue = false
-      isBuilding = true
-      builtPeriod = period
+      c.wasFollowUp = c.isFollowUpDue
+      c.isFollowUpDue = false
+      c.isBuilding = true
+      c.builtPeriod = period
       const builds = generation
       void (async () => {
         try {
           const built = await run([script, 'tree'], { cwd: dir, timeoutMs: 60000 })
           if (generation === builds) {
-            treeKey = key
-            tree = built
+            c.key = key
+            c.tree = built
           }
         } finally {
-          builtAt = await $.clock.now().catch(() => now)
-          isBuilding = false
+          c.builtAt = await $.clock.now().catch(() => now)
+          c.isBuilding = false
           void pollNow()
         }
       })()
-      return tree
+      return c.tree
     }
 
     // The trees of the snapshots, cached once resolved, since a snapshot's tree never changes
@@ -525,14 +633,17 @@ export const register: Register = on => {
       return resolved
     }
 
-    // What the main worktree's review files tell, each cached until its size or time changes:
-    // the sessions their headers name and the count of their findings by letter
+    // What the review files tell, each cached until its size or time changes:
+    // the sessions their headers name, the count of their findings by letter,
+    // whether the review is paused, and the directories of the reviewed repositories
     type Parsed = {
       size: number
       mtimeMs: number
       ids: string[]
       attached: { name: string; sessionId?: string }[]
       findings: Record<string, number>
+      isPaused: boolean
+      repos: string[]
     }
     const files = new Map<string, Parsed>()
     // The directory where the work is, as the state keeps it, else the store, which a resume keeps,
@@ -606,7 +717,8 @@ export const register: Register = on => {
       }
       return ''
     }
-    // The main worktree of the work's repository, cached for the work's directory
+    // The main worktree of a directory's repository, cached for the last directory asked,
+    // the work's on every poll
     let main: { dir: string; root: string } | undefined
     const mainOf = async (dir: string): Promise<string | undefined> => {
       if (main?.dir === dir) return main.root
@@ -617,14 +729,69 @@ export const register: Register = on => {
       main = { dir, root: common.endsWith('/.git') ? common.slice(0, -'/.git'.length) : common }
       return main.root
     }
+    // Where the review file of several repositories lives for each session, cached once found:
+    // the directory it was started in, as the first records of its transcript hold it,
+    // or that directory's main worktree
+    const startDirs = new Map<string, string>()
+    const startDirOf = async (sessionId: string): Promise<string | undefined> => {
+      const known = startDirs.get(sessionId)
+      if (known !== undefined) return known
+      const script =
+        'f=$(ls -t "$HOME"/.claude/projects/*/"$1".jsonl 2>/dev/null | head -n 1) && head -n 50 "$f" | grep -m 1 -o \'"cwd":"[^"]*"\''
+      const found = (await run(['sh', '-c', script, 'sh', sessionId]))?.match(/"cwd":"([^"]*)"/)?.[1]
+      if (found === undefined) return undefined
+      const root = (await mainOf(found)) ?? found
+      startDirs.set(sessionId, root)
+      return root
+    }
+    // The repository among the review file's that holds each snapshot, cached once found
+    const repoOfSnapshot = new Map<string, string>()
+    const repoOf = async (snapshot: string, repos: string[]): Promise<string | undefined> => {
+      const known = repoOfSnapshot.get(snapshot)
+      // One that the header no longer names, as a worktree dropped after a merge,
+      // is looked up again.
+      if (known !== undefined && repos.includes(known)) return known
+      for (const repo of repos) {
+        if ((await run(['git', 'cat-file', '-e', `${snapshot}^{commit}`], { cwd: repo })) === undefined) continue
+        repoOfSnapshot.set(snapshot, repo)
+        return repo
+      }
+      return undefined
+    }
+    // Whether a snapshot taken now would hold other trees than a task's snapshots:
+    // the one of a single repository against the work's directory,
+    // and each of several against the directory of the repository that holds it,
+    // as the header names it; undefined when none changed and any is not known;
+    // currentOf gives the tree a snapshot taken now would hold
+    const hasChangedSince = async (
+      snapshots: string[] | undefined,
+      dir: string,
+      repos: string[],
+      currentOf: (where: string) => Promise<string | undefined>,
+    ): Promise<boolean | undefined> => {
+      if (snapshots === undefined || snapshots.length === 0) return undefined
+      let isKnown = true
+      for (const snapshot of snapshots) {
+        const where = snapshots.length === 1 ? dir : await repoOf(snapshot, repos)
+        if (where === undefined) {
+          isKnown = false
+          continue
+        }
+        const [current, then] = await Promise.all([currentOf(where), treeOf(snapshot, where)])
+        if (current === undefined || then === undefined) isKnown = false
+        else if (current !== then) return true
+      }
+      return isKnown ? false : undefined
+    }
     // The main worktree where this session's review file was last found,
     // with the session it was for, kept in the store for a resume,
     // so that the file is still found while the work and the shell are outside its repository
     let fileRoot: { id: string; root?: string } | undefined
     // Find this session's review file in the main worktree of the work, else of the session,
+    // else in the directory it was started in, or that directory's main worktree,
     // else where it was last found, else where any session last found its own,
     // as a session that went on under a new ID,
-    // a new process whose store holds nothing under that ID, has no other root to look in
+    // a new process whose store holds nothing under that ID, may have no other root that holds it
     const reviewFile = async (dir: string): Promise<Parsed | undefined> => {
       const id = await $.session.id()
       // An in-process /resume keeps this handler's variables for another session.
@@ -634,7 +801,14 @@ export const register: Register = on => {
       }
       const shared = await $.store.get('fileRoots').catch(() => undefined)
       const anyRoots = Array.isArray(shared) ? shared.filter((one): one is string => typeof one === 'string') : []
-      const roots = [dir === '' ? undefined : await mainOf(dir), (await $.session.repo())?.root, fileRoot.root, ...anyRoots]
+      const start = await startDirOf(id)
+      const roots = [
+        dir === '' ? undefined : await mainOf(dir),
+        (await $.session.repo())?.root,
+        start,
+        fileRoot.root,
+        ...anyRoots,
+      ]
       for (const root of new Set(roots)) {
         if (root === undefined) continue
         const file = await reviewFileIn(root)
@@ -655,7 +829,7 @@ export const register: Register = on => {
     }
     // Find this session's review file in a main worktree,
     // the newest file in its review folder whose header's resume line names this session
-    // and which has Attach lines, as only the add-review skill's file has,
+    // and which has Attach lines, as only the autoreview skill's file has,
     // else the newest whose resume line names a session that went on in this one.
     const reviewFileIn = async (root: string): Promise<Parsed | undefined> => {
       const folder = `${root}/.claude/reviews`
@@ -667,7 +841,7 @@ export const register: Register = on => {
         return undefined
       }
       const present = new Set<string>()
-      // The files of the add-review skill, which alone have Attach lines
+      // The files of the autoreview skill, which alone have Attach lines
       const added: Parsed[] = []
       for (const entry of entries) {
         if (entry.kind !== 'file' || !entry.name.endsWith('.review')) continue
@@ -692,6 +866,9 @@ export const register: Register = on => {
             ids: [...header.matchAll(RESUME)].map(([, one = '']) => one),
             attached: [...header.matchAll(ATTACH)].map(([, name = '', sessionId]) => ({ name, sessionId })),
             findings,
+            // As the autoreview skill writes it while the user has the review paused
+            isPaused: /^Paused\.$/m.test(header),
+            repos: [...header.matchAll(CHECKOUT)].map(([, dir = '']) => dir),
           }
           files.set(path, file)
         }
@@ -765,22 +942,6 @@ export const register: Register = on => {
       const last = await read($, board)
       if (last.error?.text !== text) await update($, board, one => ({ ...one, error: { text, since: now } }))
     }
-    // The first line of what a blocked session's job waits for, as its needs say,
-    // else of what its job last said, as a failed one's job says nothing of the cause
-    const detailOf = async (agent: Agent): Promise<string | undefined> => {
-      if (agent.id === undefined) return undefined
-      try {
-        const state = JSON.parse(await $.fs.read(`${home}/.claude/jobs/${agent.id}/state.json`))
-        const firstLine = (text: unknown) => (typeof text === 'string' ? (text.trim().split('\n')[0] ?? '') : '')
-        const needs = agent.state === 'blocked' ? firstLine(state.needs) : ''
-        const line = needs === '' ? firstLine(state.detail) : needs
-        // Cut by code points, so as not to split a surrogate pair,
-        // which the engine draws as U+FFFD.
-        return line === '' ? undefined : Array.from(line).slice(0, DETAIL_CHARS).join('')
-      } catch {
-        return undefined
-      }
-    }
 
     // The sessions that `claude agents` lists, cached while no session's status file changes,
     // since each running session keeps its status in `<pid>.json` there,
@@ -837,7 +998,7 @@ export const register: Register = on => {
       sizes: paths.map(() => 0),
       stamp: '',
       readAt: 0,
-      sum: { pending: [], freedAt: 0, rounds: 0, sends: [] },
+      sum: { pending: [], freedAt: 0, rounds: 0, sends: [], highest: {} },
     })
     const describe = async (agent: Agent, now: number, hasStatusChanged: boolean): Promise<Facts> => {
       const sessionId = agent.sessionId ?? ''
@@ -914,6 +1075,41 @@ export const register: Register = on => {
       return { ...facts, model: facts.model && modelName(facts.model) }
     }
 
+    // When a review session or a subagent of its last wrote to a transcript,
+    // if QUIET_MS ago or more:
+    // the later of the session's last line, less one the engine queued for it,
+    // and its subagents' newest file, listed only once that line is as old,
+    // and no earlier than `floor`, as after a sleep of the machine, a reload, or a wait on a prompt
+    const quietSinceOf = async (sessionId: string, now: number, floor: number): Promise<number | undefined> => {
+      const cached = transcripts.get(sessionId)
+      const own = Math.max(floor, cached?.sum.lastWriteAt ?? 0)
+      if (now - own < QUIET_MS) return undefined
+      const times = await Promise.all(
+        (cached?.paths ?? []).map(path =>
+          $.fs.list(path.replace(/\.jsonl$/, '/subagents')).then(
+            entries => Math.max(0, ...entries.filter(one => one.name.endsWith('.jsonl')).map(one => one.mtimeMs)),
+            () => 0,
+          ),
+        ),
+      )
+      const last = Math.max(own, ...times)
+      return now - last >= QUIET_MS ? last : undefined
+    }
+
+    // When each review session quiet on its task, or busy after its result, was last told of,
+    // by its session ID, the sessions whose last notice has not entered yet,
+    // and when the poll saw each session's status change, or first saw it
+    const told = new Map<string, { quietSince: number; due: number }>()
+    const telling = new Set<string>()
+    const seenSince = new Map<string, { status: string; at: number }>()
+    // The review sessions blocked on their tasks that this session was told of, by session ID,
+    // each with when to tell of it again, never but after a notice that did not enter
+    const blockedTold = new Map<string, number>()
+    // Whether a poll of this load of the plugin has run
+    let hasPolled = false
+    // When the polls went on after a gap that means the machine slept
+    let awakeAt = 0
+
     // Whether a review session is busy, which keeps the polls fast
     let isActive = false
     // Whether one is busy or waiting, which keeps the list of sessions fresh
@@ -966,6 +1162,7 @@ export const register: Register = on => {
         if (windows.some(one => one.resetsAt !== undefined && one.resetsAt > polledAt && one.resetsAt <= now)) {
           $.ui.invalidate('ui.render')
         }
+        if (polledAt > 0 && now - polledAt > AWAKE_MS) awakeAt = now
         polledAt = now
         const last = await read($, board)
         await followRecord()
@@ -1013,46 +1210,129 @@ export const register: Register = on => {
           .sort((a, b) => a.label.localeCompare(b.label))
 
         const dir = work || (await $.session.cwd())
-        const [currentTree, described] = await Promise.all([
-          treeNow(dir, now),
-          Promise.all(
-            sessions.map(async session => {
-              const facts = await describe(session.agent, now, session.status !== session.before?.status)
-              const snapshotTree = facts.snapshot === undefined ? undefined : await treeOf(facts.snapshot, dir)
-              const isStuck = session.status === 'blocked' || session.status === 'failed'
-              const detail = isStuck ? await detailOf(session.agent) : undefined
-              return { ...session, facts, snapshotTree, detail }
-            }),
-          ),
-        ])
+        // The tree a snapshot taken now would hold, cached per directory for the poll
+        const currents = new Map<string, Promise<string | undefined>>()
+        const currentOf = (where: string) => {
+          const current = currents.get(where) ?? treeNow(where, now)
+          currents.set(where, current)
+          return current
+        }
+        const described = await Promise.all(
+          sessions.map(async session => {
+            const facts = await describe(session.agent, now, session.status !== session.before?.status)
+            // Idle, not blocked, with no task out,
+            // as when its reply ended asking the user something:
+            // it has nothing to do until its next task, and the fixing session asks the user.
+            const status = session.status === 'blocked' && facts.task === undefined ? 'idle' : session.status
+            const hasNewChanges = await hasChangedSince(facts.snapshots, dir, file.repos, currentOf)
+            // Busy, on its task or after its result, as on a background run it left behind,
+            // or idle with its task out, as on a background run of its own or once ended
+            const id = session.agent.sessionId ?? ''
+            const seen = seenSince.get(id)
+            if (seen?.status !== status) seenSince.set(id, { status, at: now })
+            const isWatched = status === 'busy' || (status === 'idle' && facts.task !== undefined)
+            const floor = Math.max(awakeAt, seenSince.get(id)?.at ?? now)
+            const quietSince = isWatched && !file.isPaused ? await quietSinceOf(id, now, floor) : undefined
+            return { ...session, status, facts, hasNewChanges, quietSince }
+          }),
+        )
 
-        const reviewers = described.map(({ label, agent, status, facts, snapshotTree, detail }): Reviewer => {
-          const { task, ...about } = facts
-          const hasNewChanges =
-            currentTree === undefined || snapshotTree === undefined ? undefined : currentTree !== snapshotTree
-          return {
-            label,
-            status,
-            ...(status === 'waiting' && { waitingFor: agent.waitingFor }),
-            ...(detail !== undefined && { detail }),
-            // On its task only while busy, and on its status alone otherwise, even with a task out,
-            // as while a background task of its own runs
-            ...(status === 'busy' && task && { task: task.kind, since: task.since }),
-            findings: file.findings[label.slice(-1).toUpperCase()] ?? 0,
-            hasNewChanges,
-            ...about,
-            startedAt: about.startedAt ?? agent.startedAt,
-          }
-        })
+        const reviewers = described.map(
+          ({ label, agent, status, facts, hasNewChanges, quietSince }): Reviewer => {
+            const { task, lastFound, ...about } = facts
+            return {
+              label,
+              status,
+              // On its task only while busy, and on its status alone otherwise,
+              // even with a task out, as while a background task of its own runs
+              ...(status === 'busy' && task && { task: task.kind, since: task.since }),
+              ...(quietSince !== undefined && { quietSince }),
+              findings: file.findings[label.slice(-1).toUpperCase()] ?? 0,
+              ...(lastFound !== undefined && { lastFound: lastFound[label.slice(-1).toUpperCase()] ?? 0 }),
+              hasNewChanges,
+              ...about,
+              startedAt: about.startedAt ?? agent.startedAt,
+            }
+          },
+        )
         // Writing the rows drops an error that an earlier poll noted.
-        if (last.error !== undefined || JSON.stringify(reviewers) !== JSON.stringify(last.reviewers)) {
-          await update($, board, () => ({ reviewers }))
+        const isPaused = file.isPaused
+        if (JSON.stringify({ reviewers, isPaused }) !== JSON.stringify(last)) {
+          await update($, board, () => ({ reviewers, isPaused }))
         }
 
+        // Tell this session of a review session quiet on its task, or busy after its result,
+        // as the autoreview skill checks on it then,
+        // unless the review is paused, or the last notice for it has not entered yet.
+        // A notice that does not enter, as while a Stop stands, goes again RETRY_MS later.
+        for (const { agent, label, status, facts, quietSince } of described) {
+          const id = agent.sessionId ?? label
+          if (quietSince === undefined || (facts.task === undefined && status !== 'busy')) {
+            told.delete(id)
+            continue
+          }
+          if (telling.has(id)) continue
+          const notice = quietNotice(told.get(id), quietSince, now)
+          if (notice === undefined) continue
+          told.set(id, notice)
+          telling.add(id)
+          const doing = facts.task === undefined ? 'busy since its result' : `${facts.task.kind}`
+          const text =
+            `${agent.name ?? label} has been ${doing}, with no write to its transcript ` +
+            `or its subagents' for ${elapsed(now - quietSince)}: check on it, per the autoreview skill.`
+          void $.prompt
+            .submit({ text })
+            .then(async ran => {
+              // One that entered after a long turn restarts the doubling from then.
+              if (ran.drop === undefined) {
+                const entered = await $.clock.now()
+                if (told.get(id)?.quietSince === quietSince) {
+                  told.set(id, { quietSince, due: 2 * (entered - quietSince) })
+                }
+                return
+              }
+              told.set(id, { quietSince, due: now - quietSince + RETRY_MS })
+              $.ui.log(`reviewers: the notice about ${label} did not enter`, { to: 'debug' })
+            })
+            .catch(error => $.ui.log(`reviewers: ${String(error)}`, { to: 'debug' }))
+            .finally(() => telling.delete(id))
+        }
+
+        // Tell this session once of a review session blocked on its task,
+        // as its turn ended on a question or it waits on a prompt only the user can answer,
+        // as the autoreview skill answers it or asks the user then, unless the review is paused.
+        // One the board shows blocked from before a reload was told of then.
+        for (const { agent, label, status, facts, before } of described) {
+          const id = agent.sessionId ?? label
+          if ((status !== 'blocked' && status !== 'waiting') || facts.task === undefined || file.isPaused) {
+            blockedTold.delete(id)
+            continue
+          }
+          if (!hasPolled && before?.status === status) blockedTold.set(id, Infinity)
+          if (now < (blockedTold.get(id) ?? 0)) continue
+          blockedTold.set(id, Infinity)
+          const name = agent.name ?? label
+          const text =
+            status === 'waiting'
+              ? `${name} is blocked on its task by a prompt only the user can answer, ` +
+                `in claude attach ${id.slice(0, 8)}: tell the user, per the autoreview skill.`
+              : `${name} is blocked on its task, as its turn ended needing an answer: ` +
+                `read the end of its transcript, and answer it or ask the user, per the autoreview skill.`
+          void $.prompt
+            .submit({ text })
+            .then(ran => {
+              if (ran.drop === undefined) return
+              blockedTold.set(id, now + RETRY_MS)
+              $.ui.log(`reviewers: the notice about ${label} did not enter`, { to: 'debug' })
+            })
+            .catch(error => $.ui.log(`reviewers: ${String(error)}`, { to: 'debug' }))
+        }
+
+        hasPolled = true
         isActive = reviewers.some(one => one.status === 'busy')
         isLive = reviewers.some(one => one.status === 'busy' || one.status === 'waiting')
         tickWhile(
-          reviewers.some(one => one.since !== undefined),
+          reviewers.some(one => one.since !== undefined || one.quietSince !== undefined),
           now,
         )
 
@@ -1094,7 +1374,7 @@ export const register: Register = on => {
     const ran = await next(e)
     if (e.agentId !== undefined) return ran
     const text = e.tool === 'Bash' ? e.command : e.tool === 'SendMessage' ? String(e.to ?? '') : ''
-    if (e.tool === 'Bash' && text.includes('add-review/snapshot')) void pollNow()
+    if (e.tool === 'Bash' && /(?:autoreview|add-review)\/snapshot/.test(text)) void pollNow()
     if (text.includes(INFIX)) {
       fastUntil = (await $.clock.now()) + FAST_MS
       void pollNow()
@@ -1139,7 +1419,7 @@ export const register: Register = on => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text } = $.ui.resolve(e)
     const now = await $.clock.now()
-    const { reviewers, error } = await read($, board)
+    const { reviewers, error, isPaused } = await read($, board)
     // A window that has reset since the reading shows as 0 percent, until a new reading.
     const windows = (await read($, usage)).windows
       .filter(one => WINDOWS[one.kind] !== undefined)
@@ -1148,79 +1428,110 @@ export const register: Register = on => {
         const hasReset = one.resetsAt !== undefined && one.resetsAt <= now
         return `${WINDOWS[one.kind]} ${hasReset ? 0 : Math.round(one.percentUsed)}%`
       })
-    const behind = reviewers.filter(one => one.hasNewChanges === true)
-    const changes =
-      behind.length > 0 ? 'yes' : reviewers.every(one => one.hasNewChanges === false) ? 'no' : 'unknown'
+    // The review sessions as two tables:
+    // the first gives each its state,
+    // with how long a busy one has run or a nudging one has been quiet, its model and effort,
+    // and when it started.
+    const [header, ...states] = linesOf(
+      [
+        ['name', 'state', '', 'model', 'effort', 'started'],
+        ...reviewers.map(one => [
+          one.label,
+          // A waiting one shows as blocked, as either waits on the user.
+          one.quietSince !== undefined
+            ? 'nudging'
+            : one.status === 'busy'
+              ? (one.task ?? 'busy')
+              : one.status === 'waiting'
+                ? 'blocked'
+                : one.status,
+          one.quietSince !== undefined
+            ? elapsed(now - one.quietSince)
+            : one.status === 'busy' && one.since !== undefined
+              ? elapsed(now - one.since)
+              : '',
+          one.model ?? '',
+          one.effort ?? '',
+          one.startedAt !== undefined ? shortDateTime(one.startedAt, now) : '',
+        ]),
+      ],
+      // The name, a state such as verifying, a clock to 59m 59s, a model such as Sonnet 5.5,
+      // an effort such as medium, and a start such as 11-19 03:03
+      [
+        { width: 4 },
+        { width: 9 },
+        { isNumber: true, width: 7 },
+        { width: 10 },
+        { width: 6 },
+        { width: 11 },
+      ],
+    )
+    // A line under a table's header, as wide as its widest row
+    const ruleOf = (lines: string[]) => '─'.repeat(Math.max(0, ...lines.map(line => Array.from(line).length)))
+    // The second gives its rounds, the findings that carry its letter,
+    // how many of them its last result gave new, when its last round finished,
+    // the snapshots it last got,
+    // and whether the work is dirty, as it has changed since, or ? when that is not known.
+    const rounds = linesOf(
+      [
+        ['name', 'rounds', 'found', 'new', 'finished', 'snapshot', 'dirty'],
+        ...reviewers.map(one => [
+          one.label,
+          String(one.rounds),
+          String(one.findings),
+          one.lastFound !== undefined ? String(one.lastFound) : '',
+          one.lastRoundAt !== undefined ? shortDateTime(one.lastRoundAt, now) : '',
+          (one.snapshots ?? []).map(snapshot => snapshot.slice(0, 8)).join(', '),
+          one.hasNewChanges === undefined ? '?' : one.hasNewChanges ? 'yes' : 'no',
+        ]),
+      ],
+      // The name, the counts, a finish such as 11-19 03:03, a snapshot, and yes or no
+      [
+        { width: 4 },
+        { isNumber: true, width: 6 },
+        { isNumber: true, width: 5 },
+        { isNumber: true, width: 3 },
+        { width: 11 },
+        { width: 8 },
+        { width: 5 },
+      ],
+    )
 
     return (
       <Box flexDirection="column">
         {windows.length > 0 && <Text>Usage: {windows.join(', ')}</Text>}
         {windows.length > 0 && <Text> </Text>}
-        <Text>Reviewers:</Text>
-        {reviewers.length === 0 && <Text dimColor>  none</Text>}
-        {reviewers.map(one => {
-          // Bold while busy, waiting or blocked, red when failed, else gray
+        <Text>REVIEWERS{isPaused ? ' (PAUSED)' : ''}</Text>
+        <Text> </Text>
+        {reviewers.length === 0 && <Text dimColor>none</Text>}
+        {reviewers.length > 0 && <Text>{header}</Text>}
+        {reviewers.length > 0 && <Text dimColor>{ruleOf([header ?? '', ...states])}</Text>}
+        {reviewers.map((one, i) => {
+          // Bold while busy, waiting or blocked, yellow when nudging, red when failed, else gray
           const isWorking = one.status === 'busy' || one.status === 'waiting' || one.status === 'blocked'
           const hasFailed = one.status === 'failed'
-          // The task while busy on it, with how long it has run, else the status
-          const state = one.status === 'busy' ? (one.task ?? 'busy') : one.status
-          const clock = one.status === 'busy' && one.since !== undefined ? ` for ${elapsed(now - one.since)}` : ''
+          const isQuiet = one.quietSince !== undefined
           return (
-            <Box flexDirection="column">
-              <Text
-                bold={isWorking || hasFailed}
-                dimColor={!isWorking && !hasFailed}
-                color={hasFailed ? 'error' : undefined}
-              >
-                {'  '}
-                {one.label} {state}
-                {clock}
-              </Text>
-              {one.waitingFor !== undefined && (
-                <Text>
-                  {'    '}waiting for: {one.waitingFor}
-                </Text>
-              )}
-              {one.detail !== undefined && (
-                <Text color={hasFailed ? 'error' : undefined}>
-                  {'    '}
-                  {hasFailed ? 'last said' : 'blocked on'}: {one.detail}
-                </Text>
-              )}
-              {one.lastRoundMs !== undefined && (
-                <Text dimColor>
-                  {'    '}last round: {elapsed(one.lastRoundMs)}
-                  {one.lastRound !== undefined ? `, ${findingsOf(one.lastRound)}` : ''}
-                </Text>
-              )}
-              <Text dimColor>
-                {'    '}rounds: {one.rounds}, findings: {one.findings}
-              </Text>
-              {one.model !== undefined && (
-                <Text dimColor>
-                  {'    '}model: {one.model}
-                  {one.effort !== undefined ? ` at ${one.effort}` : ''}
-                </Text>
-              )}
-              {one.startedAt !== undefined && (
-                <Text dimColor>
-                  {'    '}started: {dateTime(one.startedAt)}
-                </Text>
-              )}
-            </Box>
+            <Text
+              bold={isWorking || hasFailed || isQuiet}
+              dimColor={!isWorking && !hasFailed && !isQuiet}
+              color={hasFailed ? 'error' : isQuiet ? 'warning' : undefined}
+            >
+              {states[i]}
+            </Text>
           )
         })}
         {reviewers.length > 0 && <Text> </Text>}
-        {reviewers.length > 0 && <Text>New changes: {changes}</Text>}
-        {behind.map(one => (
-          <Text dimColor>
-            {'  '}
-            {one.label} since {one.snapshot?.slice(0, 8)}
-          </Text>
-        ))}
+        {reviewers.length > 0 && <Text> </Text>}
+        {reviewers.length > 0 && <Text>ROUNDS</Text>}
+        {reviewers.length > 0 && <Text> </Text>}
+        {reviewers.length > 0 && <Text>{rounds[0]}</Text>}
+        {reviewers.length > 0 && <Text dimColor>{ruleOf(rounds)}</Text>}
+        {reviewers.length > 0 && rounds.slice(1).map(line => <Text dimColor>{line}</Text>)}
+        {error !== undefined && <Text> </Text>}
         {error !== undefined && (
           <Text color="error">
-            Error: {error.text} since {dateTime(error.since).slice(-'00:00'.length)}
+            Error: {error.text} since {shortDateTime(error.since, now)}
           </Text>
         )}
       </Box>

@@ -1,29 +1,38 @@
 ---
-name: add-review
+name: autoreview
 description: >-
-  Start a review session that reviews a snapshot of the work in the background
-  and sends its findings here by message,
-  then fix them and send fix reports back until nothing is left.
-  Use when the user runs /add-review or asks for a review session,
+  Run a review in the background: start review sessions that review snapshots of the work
+  and send their findings here by message, fix them and send fix reports back,
+  and pause, resume or end the review.
+  Use when the user runs /autoreview or asks for a review session,
   and when findings arrive from a review session.
-argument-hint: "[level] [model] [target]"
+argument-hint: "add [level] [model] [warm] [target] | pause | resume | end"
 ---
 
-# add-review
+# autoreview
 
 This session is the fixing session `<name>`, its name as `ListAgents` shows it.
 It starts review sessions named `<name>-rw-<letter>` in the background
 and gives them every task they do, and the two pass tasks and results with `SendMessage`.
 
 Whenever a message to a review session needs an answer,
-ask in it for the answer with `SendMessage`, since its rules cover only a task's result.
+ask in it for the answer with `SendMessage`, since its rules cover only a task's result,
+and not to open the answer with a line that names this skill and a snapshot commit,
+which the `reviewers` plugin takes for the task's result.
 To withdraw a task, as when the user pauses the review,
 send each review session that has it a message whose first line is "Withdraw snapshot <commit>.",
+or for several repositories "Withdraw snapshots <commit>, <commit>.",
+naming every one of the task's,
 which the `reviewers` plugin reads, asking it to drop the task and to confirm that it has,
 resuming one that `ListAgents` no longer lists, as below, with that message as the prompt,
 since a message reaches no session that has ended,
 and once all have confirmed,
 take "Waiting for findings." out of the review file as when the last result arrives.
+While the user has the review paused, keep "Paused." in its place, which the plugin shows,
+and send no task until the user resumes the review, which an `add` does first;
+then send every review session one task at a new snapshot:
+its withdrawn task with what changed meanwhile added to its report,
+or for one that had none out, a report of what changed meanwhile, when anything did.
 
 Each review session works in a worktree of its own,
 `<main worktree>/.claude/worktrees/<name>-rw-<letter>`,
@@ -31,9 +40,15 @@ with `<main worktree>` the first path that `git worktree list` prints.
 The worktree stays from task to task,
 as moving it to the next snapshot rewrites only the files that changed and keeps what git ignores,
 such as installed dependencies and build caches.
-Once the reviewed work is merged into the default branch, or the user ends the review,
-withdraw each task still out, as above, and once all have confirmed,
-remove each review session's worktree with `git worktree remove --force`, as nothing else does.
+The review goes on wherever the work goes, as when this session merges it into another branch,
+and takes in every commit this session adds, since its range ends at the snapshot.
+Once the user ends the review, withdraw each task still out, as above,
+only from the review sessions that `ListAgents` still lists,
+as one that has ended gets no task again,
+and once all have confirmed,
+remove each review session's worktree with `git worktree remove --force`, as nothing else does,
+and take their Attach lines and "Paused." out of the review file,
+so that neither the plugin nor a later `add` counts them as this session's.
 This session's review sessions are the ones named by the Attach lines of its review file,
 the ones from before a restart of this session included,
 so that a later fixing session of the same name, or one in another project,
@@ -43,12 +58,14 @@ Never stop a review session.
 One may still end, such as when it sits idle after its task or on a reboot,
 and resuming it brings it back with its history.
 
-Resume one only when a task or a withdrawal is due for it and `ListAgents` no longer lists it,
+Resume one only when a task, a withdrawal or an answer is due for it
+and `ListAgents` no longer lists it,
 with `( cd '<its directory>' && claude --bg --resume '<session ID>' '<the prompt>' )`:
 the session ID and the directory it was started in, both of which its Attach line names,
 or for an Attach line that names no directory, the first `cwd` in its transcript,
 `~/.claude/projects/*/<session ID>.jsonl`,
-and as the prompt the task or the withdrawal due, such as the task whose result has not arrived.
+and as the prompt the task, the withdrawal or the answer due,
+such as the task whose result has not arrived.
 `claude agents` and the transcript's folder show where it runs now, which may be elsewhere.
 Quote its values as the launch command does, and keep the subshell, as there.
 Pass no other flag:
@@ -59,7 +76,17 @@ create the worktree again first, at the snapshot of the task due, or of the one 
 with `git worktree prune`, as git keeps a deleted worktree registered,
 then with the launch command's `git worktree add`.
 
-## Arguments
+## Verbs
+
+The first argument names what to do, else it is `add`:
+
+- `add` starts a review session, with the arguments below, per Start a review session,
+  resuming the review first when the user has it paused.
+- `pause` pauses the review, as above.
+- `resume` resumes it, as above.
+- `end` ends it, as above.
+
+## Arguments of `add`
 
 Tell the arguments apart by their values:
 
@@ -70,6 +97,8 @@ Tell the arguments apart by their values:
   and only when the user asks for it;
 - a model that `claude --model` takes, such as `opus` or `fable`, else `opus`,
   with a spoken name, such as `opus5.5`, turned into its ID, `claude-opus-5-5`;
+- `warm`, which starts the review session warm, on the last report sent to the others,
+  instead of a `/code-review` of the whole target, as Start a review session says;
 - anything else is the target,
   else the range from `git merge-base <remote>/HEAD <commit>` to the snapshot,
   with `<remote>` the remote whose range holds the fewest commits, of those with a `HEAD`,
@@ -99,7 +128,7 @@ even through a `cd` in a subshell around it.
 
 ## Start a review session
 
-Each `/add-review` starts a new one, even while others run.
+Each `/autoreview add` starts a new one, even while others run.
 Take a snapshot, then,
 with the next letter that no Attach line or finding heading of the review file carries
 and no `<name>-rw-<letter>` uses,
@@ -121,6 +150,13 @@ The review file is <its path>.' )
 ```
 
 The second line names the review file for the rules' numbering, whether or not it exists yet.
+With `warm`, the prompt is instead the last report sent to the other review sessions,
+as they got it, opening with the snapshots just taken, every repository's,
+less any rules below its opening line, as the new one has its own from launch,
+and naming the snapshots that the report's changes start from, as "Compare <commit> with <commit>.",
+which the new one has no earlier task to know,
+so that the new one checks the latest fixes and changes and joins the next round;
+when no report has gone out yet, ask the user instead, as there is nothing to start from.
 
 Single-quote the prompt and every value put in the command, `<name>` within the rules included,
 writing each `'` in them as `'\''`, since the shell runs a backtick or `$` in double quotes.
@@ -173,9 +209,15 @@ as the fixing session makes every change:
 report a problem you notice in the result of the task, or in your reply when the user asks.
 
 Send the result of each task to <name> with SendMessage, even when nothing is left,
-with a first line above the result naming the add-review skill and the snapshot commit,
+with a first line above the result naming the autoreview skill and the snapshot commit,
 and open no other message with such a line.
 Write each finding in the layout that the review-file skill gives a finding in its file.
+
+End your reply to each task with one line saying where its result went,
+as "Sent the result for snapshot <commit> to <name>.",
+and ask the user nothing in it, leaving out any line that counts unanswered questions:
+the fixing session asks the user every question,
+and a reply that ends asking something shows you as blocked.
 ```
 
 Then add the review session to the review file, per the `review-file` skill,
@@ -199,43 +241,46 @@ and then goes, or gives way to the line that the `review-file` skill puts there,
 ## Older and adopted review sessions
 
 A session's rules are fixed when it starts, so two kinds of review session lack the rules above:
-one started under older rules, and one the user hands over, such as a session started by hand.
+one started under older rules,
+and one the user hands over, such as a session started by hand, from any worktree or directory.
 Give such a session the rules in every task, not only the next, below the task's opening line,
-since a compaction keeps the rules given at launch but may lose those given in a message.
+since a compaction keeps the rules given at launch but may lose those given in a message,
+and a resume takes no `--append-system-prompt`.
 Give every review session the rules that way too once this session is renamed,
 since the rules it got at launch send its results to the old name.
-One started elsewhere gets its worktree too,
-created as for a new one unless `git worktree list` already holds it, and enters it by the rules.
-One started outside any git repository, where `EnterWorktree` refuses to run,
-gets in place of the rules' sentence on entering its worktree:
-
-```
-Your session runs outside any git repository, where EnterWorktree refuses to run,
-and your shell goes back there whenever a cd leaves the folders it may work in,
-so run every command that reads the snapshot in your worktree, as cd "<its worktree>" && ...,
-check before each such step that git rev-parse --show-toplevel prints that path,
-and name the worktree in the task of every subagent you start.
-Do the same in a temporary worktree, in place of entering and leaving it.
-```
 
 Take over a session the user hands over once the user has closed it,
-resuming it from the directory it was started in, with `-n '<name>-rw-<letter>'`,
-`--permission-mode` and this session's mode, so that its tasks are not held for approval,
-and `--settings` with the settings above.
+so that it runs as one this skill started but for those rules:
+give it the letter its findings carry when a new one could take that letter but for those findings,
+else the next one,
+create its worktree at a snapshot as for a new one, unless `git worktree list` already holds it,
+and resume it from there with the name and the flags of a new one,
+which a resume takes, the level and the model included:
 
+```bash
+{ git worktree list --porcelain | grep -qxF 'worktree <its worktree>' ||
+    git worktree add --detach '<its worktree>' '<commit>'; } &&
+  ( cd '<its worktree>' &&
+    claude --bg --resume '<session ID>' -n '<name>-rw-<letter>' --effort '<level>' \
+      --permission-mode '<mode>' --model '<model>' --settings '<settings>' '<its first task>' )
+```
+
+The session then runs in its worktree, as one this skill started does,
+since a resume finds the session by its ID from any directory and runs it in the one it starts from.
 A flag on a session that ran in the background starts a copy,
 which keeps its history but takes its name only from `-n`:
 use the copy from then on,
-with an Attach line naming the session ID of the job the resume printed
-and the directory it was started in.
+with an Attach line naming the session ID of the job the resume printed and its worktree.
 One that ran interactively resumes in place instead, under its own session ID,
 which that job names all the same.
 
-Add the findings the adopted session raised before, such as the ones the user pasted here,
-to the review file, under its letter and with the numbers it gave them, read from its transcript,
+Add the findings the adopted session raised before that the review file lacks,
+as the ones the user pasted here may be there already,
+under the letter it gets and with the numbers it gave them, read from its transcript,
 with their statuses as this session knows them.
 Its first task is `/check-fixes` on a fix report of each of those findings
 that the work since then fixes, and `/code-review` only of work that fixes none of them.
+That task names the letter they now carry when it got another, as its transcript holds the old one.
 
 ## When findings arrive
 
@@ -248,9 +293,34 @@ that the work since then fixes, and `/code-review` only of work that fixes none 
   Use `SendMessage`'s `notify_when_idle` to learn that one stopped without sending its result,
   then ask it once for the result with `SendMessage`, without `notify_when_idle`:
   one still on a background task sends it once that task ends.
+  Busy is not working either:
+  a review session may wait on what never comes,
+  such as a subagent of its own that waits for a line its log never writes,
+  an idle one with its task out may wait on a background run of its own that never ends,
+  and one may stay busy after its result on a background run it left behind.
+  When one on its task, or busy after its result, has written to no transcript,
+  its subagents' included, for ten minutes, and again each time that time doubles,
+  the `reviewers` plugin sends this session a message, unless the user has the review paused.
+  Then read the ends of its transcript and of its subagents' transcripts written last,
+  among which the work under way is.
+  When it is stuck, tell it with `SendMessage` what is stuck and to go on,
+  or after its result, which background runs of its own to stop,
+  asking for no answer but a result that is due;
+  otherwise, as on a long command, leave it until the next such message.
+  When one is blocked on its task,
+  as its turn ended on a question or it waits on a prompt only the user can answer,
+  the plugin sends this session a message once.
+  Then read the end of its transcript, and answer its question,
+  as its turn has ended, by resuming it, as above, with the answer as the prompt,
+  asking for no answer but the result,
+  or ask the user, as for a prompt,
+  which the user answers in `claude attach <job ID>`, as its Attach line gives it.
 - Tell the user in the reply about every check a review session says it skipped,
   such as one that would restart a shared service, since no other step passes it on.
 - Fix the ones you agree with and decline the rest with reasons, unless the user asks to choose.
+  Make the simplest change that covers each failure, which may be simpler than the suggested fix,
+  as a check that replaces a parser, and say so in the report;
+  decline a suggested fix whose code or rules cost more than the failure it covers.
   A fix that a project rule makes ask-first, such as changing a test, or one that deletes data,
   waits for the user's OK: ask in the reply.
   So does a judgment call whose choice is the user's.
@@ -261,6 +331,8 @@ that the work since then fixes, and `/code-review` only of work that fixes none 
   since the user asked for that change.
   Each finding that waits stays Open until the user answers,
   with a `- Progress:` field saying what it waits for, per the `review-file` skill.
+  In the reply, call it open for the user's answer, not something the review waits on,
+  as it holds nothing up: the review sessions review whatever snapshot they get.
 - Once a round has fixed or declined a finding,
   take a snapshot, and send every review session the report of what was fixed and what was declined,
   with the reasons, and the review file's path,
@@ -271,7 +343,7 @@ that the work since then fixes, and `/code-review` only of work that fixes none 
   Snapshot <commit>: run /check-fixes on this fix report.
   ```
 
-  A round that fixed and declined nothing, as when every finding left waits for the user,
+  A round that fixed and declined nothing, as when every finding left is open for the user's answer,
   sends no report: the next one goes once the user answers, or the work changes otherwise.
 
 ## When the work changes otherwise
@@ -296,24 +368,31 @@ so that the review session reviews and checks only this session's.
 
 ## Several repositories
 
-When the work spans several repositories, keep one review file and one set of review sessions:
+When the work spans several repositories, keep one review file and one set of review sessions,
+and treat every repository alike.
+Run each repository's commands in it, as `( cd '<repository>' && ... )`,
+since this session may run outside all of them, such as in a directory that holds them.
+Take the repositories in the order the target names them:
 
-- Keep the review file in the main worktree of one of them, the first,
-  with a checkout command per repository in its header, per the `review-file` skill,
-  and a line per repository of where the review sessions' range starts there.
+- Place the review file, with its checkout lines,
+  as the `review-file` skill gives them for several repositories,
+  and give it a line per repository of where the review sessions' range starts there.
 - Give each review session a worktree in each repository,
   at `<that repository's main worktree>/.claude/worktrees/<name>-rw-<letter>`,
-  and start it in the first repository's.
+  and start it in the worktree of the first repository, as it runs in one.
   Allow the two commands of the settings for each of its worktrees,
   and in its rules name every worktree with its repository in place of the one,
   moving each to the snapshot commit the task names for its repository.
-  The rules enter only the first repository's worktree with `EnterWorktree`,
+  The rules enter only the worktree it started in with `EnterWorktree`,
   which takes no worktree of another repository,
   and have the session move and read the others by their paths, temporary ones included.
-- Take a snapshot in each repository, the first one last,
-  since the `reviewers` plugin follows where the last snapshot ran.
-  Open each task with the first repository's snapshot, which the plugin reads,
-  and list the others' below that line, with the target in each.
+- Take a snapshot in each repository, and open each task with all of them, in that order,
+  as `Snapshots <commit>, <commit>: run /code-review ...`, which the `reviewers` plugin reads,
+  naming each repository's path with its snapshot below that line.
+- Give `/code-review` one target that names every repository's range alike,
+  as `the range <start>..<commit> in <repository path> and the range ...`:
+  one review of them all finds what it would in each,
+  where a review per repository multiplies the cost by their number.
 
 ## End of every reply
 
@@ -332,6 +411,8 @@ and before the `Unanswered questions` line when there is one:
 ```
 ````
 
-The `reviewers` plugin beside this skill shows the plan's usage and the review sessions in a pane,
-with their states and whether they have seen the latest work.
+The `reviewers` plugin in this skill's folder, the folder of a Claude Code plugin as well,
+shows the plan's usage and the review sessions in a pane, with their states,
+as nudging once one busy, or idle with its task out, has written to no transcript for ten minutes,
+unless the user has the review paused, and whether they have seen the latest work.
 The pane opens by itself in a wide enough terminal, and `/reviewers` opens it at any width.

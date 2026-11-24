@@ -1,5 +1,5 @@
 #!/bin/sh
-# Print a snapshot of the work in this repository's working tree, per the add-review skill:
+# Print a snapshot of the work in this repository's working tree, per the autoreview skill:
 # HEAD when nothing changed, else a commit of the working tree, untracked files included,
 # written through a copy of the index, so that the index and the working tree stay untouched.
 # Before the first commit, the snapshot is a commit with no parent.

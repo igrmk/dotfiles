@@ -1,21 +1,23 @@
-// A review session of this session, as the add-review skill names it: `<session name>-rw-<letter>`
+// A review session of this session, as the autoreview skill names it: `<session name>-rw-<letter>`
 export type Reviewer = {
   // Its letter's part of the name, such as `rw-a`
   label: string
-  // When neither busy nor waiting, blocked as its job ended its turn needing an answer,
-  // failed as its job ended on an error, and idle otherwise, as when its session has ended
+  // When neither busy nor waiting, blocked as its job ended its turn needing an answer on a task,
+  // failed as its job ended on an error, and idle otherwise,
+  // as when its session has ended, or when it asked the user something with no task out
   status: 'busy' | 'waiting' | 'blocked' | 'failed' | 'idle'
-  // What a waiting one waits for, such as a permission prompt
-  waitingFor?: string
-  // The first line of what a blocked one waits for, as its job's needs say,
-  // else of what its job last said, as a failed one's does
-  detail?: string
   // The task whose result it has not sent yet, unless withdrawn, while it is busy on it:
-  // a first review, a check of fixes or a check of other changes.
+  // a first review, or a check of what was updated since, fixes and other changes alike.
   // A row that is not busy leaves it out.
-  task?: 'reviewing' | 'checking fixes' | 'checking changes'
+  task?: 'reviewing' | 'verifying'
   // When it started on that task, in milliseconds since the epoch
   since?: number
+  // When it or a subagent of its last wrote to a transcript, in milliseconds since the epoch,
+  // while it is busy, or idle with its task out, and has written nothing for ten minutes since,
+  // unless the review is paused,
+  // as when it waits on what never comes, on a background run left after its result,
+  // or runs a long command; its row then shows it nudging, with how long
+  quietSince?: number
   // When it got its first task, else when its session started, in milliseconds since the epoch
   startedAt?: number
   // The model and the effort it last ran with, such as `Opus 5.5` and `max`
@@ -25,13 +27,15 @@ export type Reviewer = {
   rounds: number
   // How many of the review file's findings carry its letter
   findings: number
-  // How many findings its last result gives a heading, those left and new ones alike
-  lastRound?: number
-  // How long its last round took, from when it started on the task to the result, in milliseconds
-  lastRoundMs?: number
-  // The snapshot commit of its last task not withdrawn
-  snapshot?: string
-  // Whether a snapshot taken now would hold another tree than that one; absent when it is not known
+  // How many new findings its last result gave, those that carry its letter
+  // numbered past the highest its earlier results gave that letter
+  lastFound?: number
+  // When its last round finished, by its result, in milliseconds since the epoch
+  lastRoundAt?: number
+  // The snapshot commits of its last task not withdrawn, one per repository
+  snapshots?: string[]
+  // Whether a snapshot taken now would hold another tree than those, in any repository;
+  // absent when it is not known
   hasNewChanges?: boolean
 }
 
@@ -45,6 +49,8 @@ export type Usage = {
 
 export type Board = {
   reviewers: Reviewer[]
+  // Whether the review file says the user has the review paused
+  isPaused?: boolean
   // A failure of the pane's own that keeps the rows from being current,
   // such as `claude agents` failing, and when it began, in milliseconds since the epoch
   error?: { text: string; since: number }
