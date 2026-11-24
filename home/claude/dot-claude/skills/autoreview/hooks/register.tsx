@@ -471,8 +471,22 @@ export const register: Register = on => {
 
     const home = (await $.env.get('HOME')) ?? ''
     usageFile = `${home}/.claude/reviewers-usage-4.json`
-    // The autoreview skill's snapshot script, which builds the trees this pane compares
-    const script = `${$.plugin.root}/snapshot`
+    // The autoreview skill's snapshot script, which builds the trees this pane compares,
+    // the same one the fixing session runs:
+    // the installed skill's for a development copy of the plugin,
+    // as the session then follows the installed skill, and for a plugin with none beside it,
+    // else the one beside the plugin
+    const installed = `${home}/.claude/skills/autoreview/snapshot`
+    const beside = `${$.plugin.root}/snapshot`
+    const isDevelopmentCopy = $.plugin.root.startsWith(`${home}/.claude/dev-mods/`)
+    const script =
+      !isDevelopmentCopy &&
+      (await $.fs.stat(beside).then(
+        () => true,
+        () => false,
+      ))
+        ? beside
+        : installed
 
     // Run a command and resolve its trimmed output, or undefined on failure,
     // as when it cannot start or times out.
