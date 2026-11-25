@@ -5,10 +5,10 @@ import type { Board, Reviewer, Snapshot, Usage } from '../types'
 
 const PANE = 'reviewers'
 const TITLE = 'Reviewers'
-// Leave 3 columns past the longest row, 60 columns, a row of the snapshots table,
-// whose branch is cut to fit, to 22 characters with a project of 13 and 3 review sessions,
+// Leave 2 columns past the longest row, 64 columns, a row of the snapshots table,
+// whose branch is cut to fit, to 33 characters at most, with a project of 7 and 2 review sessions,
 // since the narrowest dock, 24 columns, would wrap it
-const COLUMNS = 63
+const COLUMNS = 66
 
 // Change a tag when its value's fields change:
 // it declines what an earlier version stored, which outlives a reload.
@@ -1605,7 +1605,7 @@ export const register: Register = on => {
     const labelsOf = (labels: string[]) => labels.join(labels.every(one => one.length === 1) ? '' : ' ')
     // The room for the project, the branch and the labels,
     // left by the gaps, the snapshot and behind
-    const free = COLUMNS - 3 - (2 + 2 + 8 + 2 + 2 + 6)
+    const free = COLUMNS - 2 - (2 + 2 + 8 + 2 + 2 + 6)
     const rwWidth = Math.min(free - 7 - 6, Math.max(2, ...snapshots.map(one => labelsOf(one.labels).length)))
     // The room for the project and the branch
     const room = free - rwWidth
