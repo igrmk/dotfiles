@@ -5,15 +5,15 @@ import type { Board, Reviewer, Usage } from '../types'
 
 const PANE = 'reviewers'
 const TITLE = 'Reviewers'
-// Leave 3 columns past the longest row of a review of one repository, 63 columns,
+// Leave 3 columns past the longest row of a review of one repository, 61 columns,
 // the header of the rounds table,
-// `name  rounds  found  new  finished        took  snapshot  dirty`,
+// `rw  rounds  found  new  finished        took  snapshot  dirty`,
 // since the narrowest dock, 24 columns, would wrap it
-const COLUMNS = 66
+const COLUMNS = 64
 
 // Change a tag when its value's fields change:
 // it declines what an earlier version stored, which outlives a reload.
-const board = atom({ plugin: 'reviewers', key: 'board' } as const, { reviewers: [] } as Board, { shape: 'board-18' })
+const board = atom({ plugin: 'reviewers', key: 'board' } as const, { reviewers: [] } as Board, { shape: 'board-19' })
 const closed = atom({ plugin: 'reviewers', key: 'closed' } as const, false, { shape: 'closed-1' })
 const usage = atom({ plugin: 'reviewers', key: 'usage' } as const, { at: 0, windows: [] } as Usage, {
   shape: 'usage-4',
@@ -1223,7 +1223,7 @@ export const register: Register = on => {
         const sessions = file.attached
           .map(one => {
             const agent = pick(one)
-            const label = NAME.test(one.name) ? one.name.slice(-INFIX.length) : one.name
+            const label = NAME.test(one.name) ? one.name.slice(-1).toUpperCase() : one.name
             const before = last.reviewers.find(row => row.label === label)
             return { label, agent, status: statusOf(agent), before }
           })
@@ -1312,7 +1312,7 @@ export const register: Register = on => {
                 return
               }
               told.set(id, { quietSince, due: now - quietSince + RETRY_MS })
-              $.ui.log(`reviewers: the notice about ${label} did not enter`, { to: 'debug' })
+              $.ui.log(`reviewers: the notice about ${agent.name ?? label} did not enter`, { to: 'debug' })
             })
             .catch(error => $.ui.log(`reviewers: ${String(error)}`, { to: 'debug' }))
             .finally(() => telling.delete(id))
@@ -1343,7 +1343,7 @@ export const register: Register = on => {
             .then(ran => {
               if (ran.drop === undefined) return
               blockedTold.set(id, now + RETRY_MS)
-              $.ui.log(`reviewers: the notice about ${label} did not enter`, { to: 'debug' })
+              $.ui.log(`reviewers: the notice about ${agent.name ?? label} did not enter`, { to: 'debug' })
             })
             .catch(error => $.ui.log(`reviewers: ${String(error)}`, { to: 'debug' }))
         }
@@ -1454,7 +1454,7 @@ export const register: Register = on => {
     // and when it started.
     const [header, ...states] = linesOf(
       [
-        ['name', 'state', '', 'model', 'effort', 'started'],
+        ['rw', 'state', '', 'model', 'effort', 'started'],
         ...reviewers.map(one => [
           one.label,
           // A waiting one shows as blocked, as either waits on the user.
@@ -1475,10 +1475,10 @@ export const register: Register = on => {
           one.startedAt !== undefined ? shortDateTime(one.startedAt, now) : '',
         ]),
       ],
-      // The name, a state such as verifying, a clock to 59m 59s, a model such as Sonnet 5.5,
+      // The letter, a state such as verifying, a clock to 59m 59s, a model such as Sonnet 5.5,
       // an effort such as medium, and a start such as 11-19 03:03
       [
-        { width: 4 },
+        { width: 2 },
         { width: 9 },
         { isNumber: true, width: 7 },
         { width: 10 },
@@ -1494,7 +1494,7 @@ export const register: Register = on => {
     // and whether the work is dirty, as it has changed since, or ? when that is not known.
     const rounds = linesOf(
       [
-        ['name', 'rounds', 'found', 'new', 'finished', 'took', 'snapshot', 'dirty'],
+        ['rw', 'rounds', 'found', 'new', 'finished', 'took', 'snapshot', 'dirty'],
         ...reviewers.map(one => [
           one.label,
           String(one.rounds),
@@ -1506,10 +1506,10 @@ export const register: Register = on => {
           one.hasNewChanges === undefined ? '?' : one.hasNewChanges ? 'yes' : 'no',
         ]),
       ],
-      // The name, the counts, a finish such as 11-19 03:03, a duration to 59m 59s, a snapshot,
+      // The letter, the counts, a finish such as 11-19 03:03, a duration to 59m 59s, a snapshot,
       // and yes or no
       [
-        { width: 4 },
+        { width: 2 },
         { isNumber: true, width: 6 },
         { isNumber: true, width: 5 },
         { isNumber: true, width: 3 },

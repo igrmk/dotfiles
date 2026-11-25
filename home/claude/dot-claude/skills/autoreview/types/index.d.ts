@@ -1,6 +1,6 @@
 // A review session of this session, as the autoreview skill names it: `<session name>-rw-<letter>`
 export type Reviewer = {
-  // Its letter's part of the name, such as `rw-a`
+  // Its letter, such as `A`, as its findings carry it, or its whole name when it is named otherwise
   label: string
   // When neither busy nor waiting, blocked as its job ended its turn needing an answer on a task,
   // failed as its job ended on an error, and idle otherwise,
