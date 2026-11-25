@@ -5,7 +5,11 @@ if [[ -n $ZSH_VERSION ]]; then
 
 	# Title tmux panes with the running command, else the directory, and report the directory
 	if [[ -n $TMUX ]]; then
-		_tmux_precmd() { _short_pwd; print -rn -- $'\e]2;'"$REPLY"$'\a\e]7;'"$PWD"$'\a'; }
+		_tmux_precmd() {
+			local REPLY
+			_short_pwd
+			print -rn -- $'\e]2;'"$REPLY"$'\a\e]7;'"$PWD"$'\a'
+		}
 		_tmux_preexec() { print -rn -- $'\e]2;'"${(V)1}"$'\a\e]7;\a'; }
 		precmd_functions+=(_tmux_precmd)
 		preexec_functions+=(_tmux_preexec)

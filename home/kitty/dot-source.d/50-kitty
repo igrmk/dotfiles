@@ -126,8 +126,16 @@ fi
 
 # Set the tab's title to the command, else the short directory
 if [[ -n $ZSH_VERSION && $TERM == xterm-kitty && -z $TMUX ]]; then
-	_kitty_title_precmd() { _short_pwd; print -rn -- $'\e]2;'"${SSH_CONNECTION:+${HOST%%.*}: }$REPLY"$'\a'; }
+	_kitty_title_precmd() {
+		local REPLY
+		_short_pwd
+		print -rn -- $'\e]2;'"${SSH_CONNECTION:+${HOST%%.*}: }$REPLY"$'\a'
+	}
 	_kitty_title_preexec() { print -rn -- $'\e]2;'"${SSH_CONNECTION:+${HOST%%.*}: }${(V)1}"$'\a'; }
 	precmd_functions+=(_kitty_title_precmd)
 	preexec_functions+=(_kitty_title_preexec)
+	# Turn off kitty's own titles, which its integration over kitten ssh would write over these
+	if [[ -n $KITTY_SHELL_INTEGRATION && $KITTY_SHELL_INTEGRATION != *no-title* ]]; then
+		KITTY_SHELL_INTEGRATION+=' no-title'
+	fi
 fi
