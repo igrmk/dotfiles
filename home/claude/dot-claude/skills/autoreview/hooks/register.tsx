@@ -13,7 +13,7 @@ const COLUMNS = 66
 // Change a tag when its value's fields change:
 // it declines what an earlier version stored, which outlives a reload.
 const board = atom({ plugin: 'reviewers', key: 'board' } as const, { reviewers: [], snapshots: [] } as Board, {
-  shape: 'board-23',
+  shape: 'board-24',
 })
 const closed = atom({ plugin: 'reviewers', key: 'closed' } as const, false, { shape: 'closed-1' })
 const usage = atom({ plugin: 'reviewers', key: 'usage' } as const, { at: 0, windows: [] } as Usage, {
@@ -122,10 +122,12 @@ type Kind = NonNullable<Reviewer['task']>
 // with how many new findings its last result gave each letter
 type Facts = Pick<
   Reviewer,
-  'model' | 'effort' | 'rounds' | 'snapshots' | 'startedAt' | 'lastRoundAt' | 'lastRoundMs' | 'totalMs'
+  'model' | 'effort' | 'rounds' | 'startedAt' | 'lastRoundAt' | 'lastRoundMs' | 'totalMs'
 > & {
   task?: { kind: Kind; since: number }
   lastFound?: Record<string, number>
+  // The snapshot commits of its last task not withdrawn, one per repository
+  snapshots?: string[]
   // The path of the worktree of each of its snapshots, as its tasks named them
   paths?: (string | undefined)[]
 }
@@ -798,9 +800,11 @@ export const register: Register = on => {
       return undefined
     }
     // The directory of each of a task's snapshots, undefined when not known:
-    // the path the task named with it, while that is there,
+    // the path the task named with it,
     // as every worktree of a repository holds the others' snapshots,
-    // else the work's directory for a single repository's,
+    // and once that is gone, as when its worktree was merged,
+    // the checkout line in the snapshot's place when that holds it, and none otherwise;
+    // else, when the task named no path, the work's directory for a single repository's,
     // and otherwise the directory of the repository that holds it, as the header names it,
     // trying first the checkout line in the snapshot's place,
     // which follows the target's order as the snapshots do
@@ -808,10 +812,17 @@ export const register: Register = on => {
       Promise.all(
         snapshots.map(async (snapshot, i) => {
           const path = paths[i]
-          if (path !== undefined && (await $.fs.stat(path).then(() => true, () => false))) return path
+          if (path !== undefined) {
+            if (await $.fs.stat(path).then(() => true, () => false)) return path
+            const line = repos[i]
+            return snapshots.length === repos.length && line !== undefined ? repoOf(snapshot, [line]) : undefined
+          }
           return snapshots.length === 1
             ? dir
-            : repoOf(snapshot, snapshots.length === repos.length ? [...repos.slice(i, i + 1), ...repos] : repos)
+            : repoOf(
+                snapshot,
+                snapshots.length === repos.length ? [...new Set([...repos.slice(i, i + 1), ...repos])] : repos,
+              )
         }),
       )
     // Whether a snapshot taken now in a directory would hold another tree than a snapshot,
@@ -826,15 +837,39 @@ export const register: Register = on => {
       return current === undefined || then === undefined ? undefined : current !== then
     }
     // A worktree's repository, by the name of its main worktree's folder,
-    // and the branch checked out in it now, or the name of its own folder when it is detached
+    // the name of its own folder, and its git folder,
+    // cached for good once found, as none of them changes
+    const layouts = new Map<string, Promise<{ project: string; folder: string; gitDir: string } | undefined>>()
+    const layoutOf = (where: string) => {
+      const known = layouts.get(where)
+      if (known !== undefined) return known
+      const argv = ['git', 'rev-parse', '--path-format=absolute', '--git-common-dir', '--show-toplevel', '--git-dir']
+      const layout = run(argv, { cwd: where }).then(out => {
+        const [common, top, gitDir] = out?.split('\n') ?? []
+        if (common === undefined || top === undefined || gitDir === undefined) {
+          layouts.delete(where)
+          return undefined
+        }
+        // As mainOf finds the main worktree
+        const root = common.endsWith('/.git') ? common.slice(0, -'/.git'.length) : common
+        const nameOf = (path: string) => path.slice(path.lastIndexOf('/') + 1)
+        return { project: nameOf(root), folder: nameOf(top), gitDir }
+      })
+      layouts.set(where, layout)
+      return layout
+    }
+    // A worktree's repository, and the branch checked out in it now, read from its HEAD file,
+    // which names it even before its first commit, or from git when that file is reftable's stub,
+    // or the name of its own folder when it is detached
     const projectOf = async (where: string) => {
-      const argv = ['git', 'rev-parse', '--path-format=absolute', '--git-common-dir', '--show-toplevel']
-      const [common, top, branch] = (await run([...argv, '--abbrev-ref', 'HEAD'], { cwd: where }))?.split('\n') ?? []
-      if (common === undefined || top === undefined || branch === undefined) return undefined
-      // As mainOf finds the main worktree
-      const root = common.endsWith('/.git') ? common.slice(0, -'/.git'.length) : common
-      const nameOf = (path: string) => path.slice(path.lastIndexOf('/') + 1)
-      return { project: nameOf(root), branch: branch === 'HEAD' ? nameOf(top) : branch }
+      const layout = await layoutOf(where)
+      if (layout === undefined) return undefined
+      const head = await $.fs.read(`${layout.gitDir}/HEAD`).catch(() => undefined)
+      if (head === undefined) return undefined
+      const named = /^ref: refs\/heads\/(.+)$/m.exec(head)?.[1]
+      const branch =
+        named === '.invalid' ? await run(['git', 'symbolic-ref', '--quiet', '--short', 'HEAD'], { cwd: where }) : named
+      return { project: layout.project, branch: branch ?? layout.folder }
     }
     // The main worktree where this session's review file was last found,
     // with the session it was for, kept in the store for a resume,
@@ -1306,7 +1341,7 @@ export const register: Register = on => {
 
         const reviewers = described.map(
           ({ label, agent, status, facts, quietSince }): Reviewer => {
-            const { task, lastFound, paths, ...about } = facts
+            const { task, lastFound, paths, snapshots, ...about } = facts
             return {
               label,
               status,
@@ -1326,7 +1361,8 @@ export const register: Register = on => {
         for (const { label, facts, places, dirty } of described) {
           for (const [i, commit] of (facts.snapshots ?? []).entries()) {
             const where = places[i]
-            const key = `${where ?? ''}\0${commit}`
+            // By the commit's shortest spelling, as tasks may spell one snapshot at two lengths
+            const key = `${where ?? ''}\0${commit.slice(0, 7)}`
             const known = placed.get(key) ?? { one: { commit, labels: [], hasNewChanges: dirty[i] }, where }
             known.one.labels.push(label)
             placed.set(key, known)
@@ -1601,6 +1637,7 @@ export const register: Register = on => {
     // its project, as a repository's name,
     // and the branch of its worktree, or the name of its folder when it is detached,
     // or ? for each when it is in none of the review's repositories,
+    // or when the worktree its task named for it is gone and its checkout line does not hold it,
     // the snapshot, the review sessions whose last task names it, by their labels,
     // and whether they are behind, as the work there has changed since,
     // or ? when that is not known.

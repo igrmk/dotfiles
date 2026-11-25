@@ -37,8 +37,6 @@ export type Reviewer = {
   lastRoundMs?: number
   // How long all its rounds took, in milliseconds, the sum of each one's as the last one's is taken
   totalMs?: number
-  // The snapshot commits of its last task not withdrawn, one per repository
-  snapshots?: string[]
 }
 
 // A reading of the plan's usage, as a session's last response reported it:
@@ -54,7 +52,8 @@ export type Snapshot = {
   // The repository, by the name of its main worktree's folder,
   // and the branch checked out in the snapshot's worktree,
   // or the name of the worktree's folder when it is detached;
-  // both absent when the snapshot is in none of the review's repositories
+  // both absent when the snapshot is in none of the review's repositories,
+  // or when the worktree its task named for it is gone and its checkout line does not hold it
   project?: string
   branch?: string
   commit: string
