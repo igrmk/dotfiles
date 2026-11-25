@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Install or upgrade kitty's upstream build in ~/.local/kitty.app.
+set -euo pipefail
+
+# Kovid Goyal's key, which signs kitty's releases
+key=3CE1780F78DD88DF45194FD706BC317B515ACE7C
+app=$HOME/.local/kitty.app
+
+version=$(curl -fsSL https://sw.kovidgoyal.net/kitty/current-version.txt)
+if [[ $("$app/bin/kitty" --version 2>/dev/null) == "kitty $version "* ]]; then
+	echo "kitty $version already installed"
+	exit
+fi
+
+arch=$(uname -m)
+file=kitty-$version-${arch/aarch64/arm64}.txz
+url=https://github.com/kovidgoyal/kitty/releases/download/v$version/$file
+
+mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
+# Unpack next to the app, so moving it in place is a rename
+tmp=$(mktemp -d "$app.XXXXXX")
+trap 'rm -rf "$tmp"' EXIT
+
+curl -fsSL "$url" -o "$tmp/$file"
+curl -fsSL "$url.sig" -o "$tmp/$file.sig"
+
+# Verify against the pinned key alone, whatever else the key file holds
+export GNUPGHOME=$tmp/gnupg
+install -d -m 700 "$GNUPGHOME"
+curl -fsSL https://calibre-ebook.com/signatures/kovid.gpg | gpg --quiet --import
+gpg --export "$key" > "$tmp/key.gpg"
+gpgv --keyring "$tmp/key.gpg" "$tmp/$file.sig" "$tmp/$file"
+
+mkdir "$tmp/kitty.app"
+tar -xJf "$tmp/$file" -C "$tmp/kitty.app"
+rm -rf "$app"
+mv "$tmp/kitty.app" "$app"
+
+ln -sf "$app/bin/kitty" "$app/bin/kitten" "$HOME/.local/bin/"
+# Point the launcher at this build, which overrides apt's kitty.desktop
+sed -E -e "s|^((Try)?Exec)=kitty|\1=$app/bin/kitty|" \
+	-e "s|^Icon=kitty|Icon=$app/share/icons/hicolor/256x256/apps/kitty.png|" \
+	"$app/share/applications/kitty.desktop" > "$HOME/.local/share/applications/kitty.desktop"
+
+echo "Installed kitty $version"

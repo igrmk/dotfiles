@@ -9,6 +9,7 @@ packages=(
 	git
 	interception-caps2esc
 	interception-tools
+	kitty-terminfo
 	openssh-server
 	ripgrep
 	stow
