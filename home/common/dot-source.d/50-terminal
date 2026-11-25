@@ -17,3 +17,12 @@ get-terminal-background-color() {
 
 # p10k drops its blank line on a new TTY, gluing the first prompt to the login banner
 [ -n "$SSH_CONNECTION" ] && echo
+
+# Set the REPLY variable to the working directory, shortened
+if [[ -n $ZSH_VERSION ]]; then
+	_short_pwd() {
+		setopt localoptions extendedglob
+		REPLY=${(%):-%~}
+		REPLY=${REPLY//(#b)((.|)[^\/])[^\/]#\//$match[1]/}
+	}
+fi
