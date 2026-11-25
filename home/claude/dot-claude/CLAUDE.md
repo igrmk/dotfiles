@@ -32,6 +32,8 @@
   except while you review,
   where it goes into a finding or a comment unless the user asks for the change.
 - Never read another machine's Claude Code data.
+- Before guessing why another Claude session or a subagent behaves as it does, ask it,
+  also when the user asks.
 - Answer each question sent mid-turn at the end of that turn's final message.
 - Say the important thing first and only then why:
   an instruction before its reason, and a consequence before its cause.
