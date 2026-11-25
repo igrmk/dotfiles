@@ -10,7 +10,7 @@ description: >-
 
 Ask the unanswered questions, the same ones the `Unanswered questions: N` line counts.
 
-- Number them `Q1`, `Q2` and so on, oldest first.
+- Number them `Q1`, `Q2` and so on, oldest first, and keep each number for the whole conversation.
 - Make each one answerable without scrolling back:
   - the question in bold
   - what it is about, in a sentence or two
