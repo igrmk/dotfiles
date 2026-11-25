@@ -13,8 +13,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Commit finished changes without asking
 - NEVER push to origin unless explicitly asked; committing does not imply pushing (applies to every repo, not just this one),
   except that the todo skill pushes each todo list edit, as the todo repository's `CLAUDE.md` asks
-- Fold a change that belongs in an unpushed commit into it with `git commit --fixup` and autosquash,
-  never a follow-up commit
 - Format matrix-like data Go-style: pad columns with spaces so columns start at the same offset
   (e.g. package name and URL pairs in a shell array)
 - Prefer one-line imperative comments (e.g. `# Disable dragging to prevent tab detaches`)
