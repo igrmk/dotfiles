@@ -325,12 +325,15 @@ function modelName(id: string): string {
 }
 
 // Return ms as minutes and seconds, such as `21m 04s`, as seconds alone under a minute, as `18s`,
-// and as hours and minutes from an hour on, as `4h 19m`.
+// as hours and minutes from an hour on, as `4h 19m`,
+// and as days and hours from a day on, as `4d 03h`, so that it takes 7 columns to `99d 23h`.
 function elapsed(ms: number): string {
   const seconds = Math.max(0, Math.floor(ms / 1000))
   const minutes = Math.floor(seconds / 60)
   const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
   const two = (part: number) => String(part).padStart(2, '0')
+  if (days > 0) return `${days}d ${two(hours % 24)}h`
   if (hours > 0) return `${hours}h ${two(minutes % 60)}m`
   return minutes === 0 ? `${seconds}s` : `${minutes}m ${two(seconds % 60)}s`
 }
@@ -1547,8 +1550,8 @@ export const register: Register = on => {
           one.startedAt !== undefined ? shortDateTime(one.startedAt, now) : '',
         ]),
       ],
-      // The letter, a state such as verifying, a clock to 59m 59s, a model such as Sonnet 5.5,
-      // an effort such as medium, and a start such as 11-19 03:03
+      // The letter, a state such as verifying, a clock to 7 columns, as 59m 59s or 99d 23h,
+      // a model such as Sonnet 5.5, an effort such as medium, and a start such as 11-19 03:03
       [
         { width: 2 },
         { width: 9 },
@@ -1562,10 +1565,12 @@ export const register: Register = on => {
     const ruleOf = (lines: string[]) => '─'.repeat(Math.max(0, ...lines.map(line => Array.from(line).length)))
     // The second gives its round, the number of the last task it got,
     // the findings that carry its letter and how many of them its last result gave new,
-    // when its last round finished, and how long all its rounds took and its last one.
+    // when its last round finished, and how long all its rounds took and its last one,
+    // each from when its clock started to its result,
+    // so with any time the session spent stuck or idle with its task out.
     // A pair shares a column, as `found / new`,
     // the first of it set right under its name and the second left under its own,
-    // the counts to 99999 and 999 and the durations to 59m 59s or 99h 59m.
+    // the counts to 99999 and 999 and the durations to 7 columns, as 59m 59s or 99d 23h.
     const pairOf = (first: string, second: string, widths: [number, number], gap = '   ') =>
       `${first.padStart(widths[0])}${gap}${second.padEnd(widths[1])}`
     const rounds = linesOf(
