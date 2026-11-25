@@ -368,6 +368,13 @@ the default target and the changes between snapshots hold their commits too,
 as they do the default branch's commits that the work takes in, by a rebase onto it or a merge.
 Whenever a task's range holds such commits, name them in the task as other sessions' work,
 so that the review session reviews and checks only this session's.
+When the user asks to check them, such as pulled updates,
+the review sessions check, as a change,
+those that have to do with the work, such as by touching its files,
+and the rest only when the user asks for those as well:
+take a snapshot and send every review session a report of the updates they check,
+per "When the work changes otherwise",
+that asks to check them, not naming them as other sessions' work, which `/check-fixes` leaves out.
 
 ## Several repositories
 
