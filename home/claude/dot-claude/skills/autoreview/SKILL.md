@@ -416,3 +416,24 @@ shows the plan's usage and the review sessions in a pane, with their states,
 as nudging once one busy, or idle with its task out, has written to no transcript for ten minutes,
 unless the user has the review paused, and whether they have seen the latest work.
 The pane opens by itself in a wide enough terminal, and `/reviewers` opens it at any width.
+
+Claude Code loads the plugin only as a session starts,
+so a session started before the plugin was installed shows no pane until it restarts.
+To show the pane in such a session without a restart, when the user asks for it,
+load the plugin-authoring skill,
+which has Claude Code watch this session's mods folder,
+the folder `~/.claude/dev-mods/<session ID>`,
+and link this skill's folder into it,
+never copy it, since a copy misses every later change to the plugin:
+
+```bash
+mkdir -p ~/.claude/dev-mods/"$CLAUDE_CODE_SESSION_ID" &&
+  ln -sfn "<this skill's folder>" ~/.claude/dev-mods/"$CLAUDE_CODE_SESSION_ID"/reviewers
+```
+
+The pane loads when the turn ends, once the mods are on:
+the auto and bypass permission modes turn them on unasked, dontAsk never does,
+and any other mode asks the user first.
+Once the session restarts, remove the link before anything else:
+Claude Code then loads the plugin from this skill's folder as well,
+and with both loaded the pane vanishes.
