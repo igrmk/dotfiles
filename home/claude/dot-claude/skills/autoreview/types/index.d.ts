@@ -35,11 +35,10 @@ export type Reviewer = {
   // How long its last round took, in milliseconds:
   // from when its clock started, as the pane shows it while it is busy, to its result
   lastRoundMs?: number
+  // How long all its rounds took, in milliseconds, the sum of each one's as the last one's is taken
+  totalMs?: number
   // The snapshot commits of its last task not withdrawn, one per repository
   snapshots?: string[]
-  // Whether a snapshot taken now would hold another tree than those, in any repository;
-  // absent when it is not known
-  hasNewChanges?: boolean
 }
 
 // A reading of the plan's usage, as a session's last response reported it:
@@ -50,8 +49,25 @@ export type Usage = {
   windows: { kind: string; percentUsed: number; resetsAt?: number }[]
 }
 
+// A snapshot that the last task of a review session names, in a repository of its review
+export type Snapshot = {
+  // The repository, by the name of its main worktree's folder,
+  // and the branch checked out in the snapshot's worktree,
+  // or the name of the worktree's folder when it is detached;
+  // both absent when the snapshot is in none of the review's repositories
+  project?: string
+  branch?: string
+  commit: string
+  // The labels of the review sessions whose last task names it
+  labels: string[]
+  // Whether a snapshot taken now in its worktree would hold another tree;
+  // absent when it is not known
+  hasNewChanges?: boolean
+}
+
 export type Board = {
   reviewers: Reviewer[]
+  snapshots: Snapshot[]
   // Whether the review file says the user has the review paused
   isPaused?: boolean
   // A failure of the pane's own that keeps the rows from being current,

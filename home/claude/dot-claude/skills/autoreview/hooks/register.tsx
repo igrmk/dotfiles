@@ -1,19 +1,20 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, SessionRateLimit, Timer } from 'claude-code'
 
-import type { Board, Reviewer, Usage } from '../types'
+import type { Board, Reviewer, Snapshot, Usage } from '../types'
 
 const PANE = 'reviewers'
 const TITLE = 'Reviewers'
-// Leave 3 columns past the longest row of a review of one repository, 61 columns,
-// the header of the rounds table,
-// `rw  rounds  found  new  finished        took  snapshot  dirty`,
+// Leave 3 columns past the longest row, 60 columns, a row of the snapshots table,
+// whose branch is cut to fit, to 23 characters with a project of 13 and 3 review sessions,
 // since the narrowest dock, 24 columns, would wrap it
-const COLUMNS = 64
+const COLUMNS = 63
 
 // Change a tag when its value's fields change:
 // it declines what an earlier version stored, which outlives a reload.
-const board = atom({ plugin: 'reviewers', key: 'board' } as const, { reviewers: [] } as Board, { shape: 'board-19' })
+const board = atom({ plugin: 'reviewers', key: 'board' } as const, { reviewers: [], snapshots: [] } as Board, {
+  shape: 'board-23',
+})
 const closed = atom({ plugin: 'reviewers', key: 'closed' } as const, false, { shape: 'closed-1' })
 const usage = atom({ plugin: 'reviewers', key: 'usage' } as const, { at: 0, windows: [] } as Usage, {
   shape: 'usage-4',
@@ -37,6 +38,9 @@ const TASK = new RegExp(`(?:^|<cross-session-message[^>]*>\\s*)${opening(`(${COM
 const withdrawal = (commits: string) => `Withdraw snapshots? ${commits}\\.`
 // A withdrawal by its opening line, as the autoreview skill sends one
 const WITHDRAWAL = new RegExp(`(?:^|<cross-session-message[^>]*>\\s*)${withdrawal(`(${COMMITS})`)}`)
+// A line of a task below its opening that names a repository's path and its snapshot,
+// maybe as a list item
+const PATH = new RegExp(`^(?:- )?(/[^\\n:]*): (${COMMIT})$`, 'gm')
 // The transcript lines that may hold a task, a withdrawal or a result
 const TASK_OR_RESULT = new RegExp(`${opening(COMMITS)}|${withdrawal(COMMITS)}|"name":"SendMessage"`)
 // A line's time, and the opening of a line the engine writes as it queues a message for the session
@@ -118,10 +122,12 @@ type Kind = NonNullable<Reviewer['task']>
 // with how many new findings its last result gave each letter
 type Facts = Pick<
   Reviewer,
-  'model' | 'effort' | 'rounds' | 'snapshots' | 'startedAt' | 'lastRoundAt' | 'lastRoundMs'
+  'model' | 'effort' | 'rounds' | 'snapshots' | 'startedAt' | 'lastRoundAt' | 'lastRoundMs' | 'totalMs'
 > & {
   task?: { kind: Kind; since: number }
   lastFound?: Record<string, number>
+  // The path of the worktree of each of its snapshots, as its tasks named them
+  paths?: (string | undefined)[]
 }
 // What the lines of a transcript read so far tell:
 // the tasks whose results have not come, less those withdrawn,
@@ -129,9 +135,11 @@ type Facts = Pick<
 // the snapshots of the newest task a result freed,
 // the results sent whose tool results have not come, by their tool uses' IDs,
 // the highest number its results gave each letter, the time of its last line,
+// the path of each snapshot's worktree that a task named, by its commit,
 // and the rest of the facts
 type Task = { snapshots: string[]; kind: Kind; at: number }
-type Tally = Omit<Facts, 'task'> & {
+type Tally = Omit<Facts, 'task' | 'paths'> & {
+  pathOf: Record<string, string>
   pending: Task[]
   freedAt: number
   freedSnapshots?: string[]
@@ -236,6 +244,7 @@ function tally(sum: Tally, lines: string[]): void {
         sum.lastRoundAt = send.at
         // The round ran from when its clock started, as the pane shows it, to the result.
         sum.lastRoundMs = send.at - Math.max(sum.pending[0]?.at ?? send.at, sum.freedAt)
+        sum.totalMs = (sum.totalMs ?? 0) + sum.lastRoundMs
         sum.freedSnapshots = sum.pending[i]?.snapshots
         sum.pending.splice(0, i + 1)
         sum.freedAt = send.at
@@ -276,6 +285,7 @@ function tally(sum: Tally, lines: string[]): void {
     }
     const [, listed, skill] = text.match(TASK) ?? []
     if (listed === undefined) continue
+    for (const [, path = '', commit = ''] of text.matchAll(PATH)) sum.pathOf[commit] = path
     const snapshots = listed.split(/, /)
     const kind: Kind = skill === 'code-review' ? 'reviewing' : 'verifying'
     const isSame = (task: Task) =>
@@ -292,9 +302,14 @@ function tally(sum: Tally, lines: string[]): void {
 
 // Return the facts a tally tells, with its oldest task,
 // timed from when it arrived or the task before it ended, whichever is later.
-function factsOf({ pending, freedAt, freedSnapshots, sends, highest, lastWriteAt, ...facts }: Tally): Facts {
+function factsOf({ pending, freedAt, freedSnapshots, sends, highest, lastWriteAt, pathOf, ...facts }: Tally): Facts {
   const oldest = pending[0]
-  return { ...facts, task: oldest && { kind: oldest.kind, since: Math.max(oldest.at, freedAt) } }
+  // A path named with a commit, either of the two maybe abbreviated
+  const named = Object.entries(pathOf)
+  const paths = facts.snapshots?.map(
+    one => named.find(([commit]) => commit.startsWith(one) || one.startsWith(commit))?.[1],
+  )
+  return { ...facts, paths, task: oldest && { kind: oldest.kind, since: Math.max(oldest.at, freedAt) } }
 }
 
 // Return a model ID the way Anthropic writes it, such as `Opus 5.5` for `claude-opus-5-5`,
@@ -764,44 +779,59 @@ export const register: Register = on => {
       startDirs.set(sessionId, root)
       return root
     }
-    // The repository among the review file's that holds each snapshot, cached once found
+    // The first of the repositories that holds a snapshot, cached once found,
+    // per snapshot and list of repositories, as the worktrees of a repository share its snapshots,
+    // and as a list without the one found, as after a worktree is dropped, looks again
     const repoOfSnapshot = new Map<string, string>()
     const repoOf = async (snapshot: string, repos: string[]): Promise<string | undefined> => {
-      const known = repoOfSnapshot.get(snapshot)
-      // One that the header no longer names, as a worktree dropped after a merge,
-      // is looked up again.
-      if (known !== undefined && repos.includes(known)) return known
+      const key = [snapshot, ...repos].join('\0')
+      const known = repoOfSnapshot.get(key)
+      if (known !== undefined) return known
       for (const repo of repos) {
         if ((await run(['git', 'cat-file', '-e', `${snapshot}^{commit}`], { cwd: repo })) === undefined) continue
-        repoOfSnapshot.set(snapshot, repo)
+        repoOfSnapshot.set(key, repo)
         return repo
       }
       return undefined
     }
-    // Whether a snapshot taken now would hold other trees than a task's snapshots:
-    // the one of a single repository against the work's directory,
-    // and each of several against the directory of the repository that holds it,
-    // as the header names it; undefined when none changed and any is not known;
-    // currentOf gives the tree a snapshot taken now would hold
-    const hasChangedSince = async (
-      snapshots: string[] | undefined,
-      dir: string,
-      repos: string[],
+    // The directory of each of a task's snapshots, undefined when not known:
+    // the path the task named with it, while that is there,
+    // as every worktree of a repository holds the others' snapshots,
+    // else the work's directory for a single repository's,
+    // and otherwise the directory of the repository that holds it, as the header names it,
+    // trying first the checkout line in the snapshot's place,
+    // which follows the target's order as the snapshots do
+    const placesOf = (snapshots: string[], paths: (string | undefined)[], dir: string, repos: string[]) =>
+      Promise.all(
+        snapshots.map(async (snapshot, i) => {
+          const path = paths[i]
+          if (path !== undefined && (await $.fs.stat(path).then(() => true, () => false))) return path
+          return snapshots.length === 1
+            ? dir
+            : repoOf(snapshot, snapshots.length === repos.length ? [...repos.slice(i, i + 1), ...repos] : repos)
+        }),
+      )
+    // Whether a snapshot taken now in a directory would hold another tree than a snapshot,
+    // undefined when that is not known; currentOf gives the tree a snapshot taken now would hold
+    const isDirty = async (
+      snapshot: string,
+      where: string | undefined,
       currentOf: (where: string) => Promise<string | undefined>,
     ): Promise<boolean | undefined> => {
-      if (snapshots === undefined || snapshots.length === 0) return undefined
-      let isKnown = true
-      for (const snapshot of snapshots) {
-        const where = snapshots.length === 1 ? dir : await repoOf(snapshot, repos)
-        if (where === undefined) {
-          isKnown = false
-          continue
-        }
-        const [current, then] = await Promise.all([currentOf(where), treeOf(snapshot, where)])
-        if (current === undefined || then === undefined) isKnown = false
-        else if (current !== then) return true
-      }
-      return isKnown ? false : undefined
+      if (where === undefined) return undefined
+      const [current, then] = await Promise.all([currentOf(where), treeOf(snapshot, where)])
+      return current === undefined || then === undefined ? undefined : current !== then
+    }
+    // A worktree's repository, by the name of its main worktree's folder,
+    // and the branch checked out in it now, or the name of its own folder when it is detached
+    const projectOf = async (where: string) => {
+      const argv = ['git', 'rev-parse', '--path-format=absolute', '--git-common-dir', '--show-toplevel']
+      const [common, top, branch] = (await run([...argv, '--abbrev-ref', 'HEAD'], { cwd: where }))?.split('\n') ?? []
+      if (common === undefined || top === undefined || branch === undefined) return undefined
+      // As mainOf finds the main worktree
+      const root = common.endsWith('/.git') ? common.slice(0, -'/.git'.length) : common
+      const nameOf = (path: string) => path.slice(path.lastIndexOf('/') + 1)
+      return { project: nameOf(root), branch: branch === 'HEAD' ? nameOf(top) : branch }
     }
     // The main worktree where this session's review file was last found,
     // with the session it was for, kept in the store for a resume,
@@ -1018,7 +1048,7 @@ export const register: Register = on => {
       sizes: paths.map(() => 0),
       stamp: '',
       readAt: 0,
-      sum: { pending: [], freedAt: 0, rounds: 0, sends: [], highest: {} },
+      sum: { pending: [], freedAt: 0, rounds: 0, sends: [], highest: {}, pathOf: {} },
     })
     const describe = async (agent: Agent, now: number, hasStatusChanged: boolean): Promise<Facts> => {
       const sessionId = agent.sessionId ?? ''
@@ -1052,7 +1082,12 @@ export const register: Register = on => {
         // Resolve undefined on a failure, to keep the cached facts and stamp,
         // so that the next poll reads the files again.
         const readOn = async (from: Transcript): Promise<Transcript | 'anew' | undefined> => {
-          const sum: Tally = { ...from.sum, pending: [...from.sum.pending], sends: [...from.sum.sends] }
+          const sum: Tally = {
+            ...from.sum,
+            pending: [...from.sum.pending],
+            sends: [...from.sum.sends],
+            pathOf: { ...from.sum.pathOf },
+          }
           const offsets = [...from.offsets]
           const ends = [...from.ends]
           for (const [i, path] of from.paths.entries()) {
@@ -1192,7 +1227,7 @@ export const register: Register = on => {
           isActive = false
           isLive = false
           tickWhile(false, now)
-          if (last.reviewers.length > 0 || last.error !== undefined) await update($, board, () => ({ reviewers: [] }))
+          if (last.reviewers.length > 0 || last.error !== undefined) await update($, board, () => ({ reviewers: [], snapshots: [] }))
           return
         }
 
@@ -1237,6 +1272,13 @@ export const register: Register = on => {
           currents.set(where, current)
           return current
         }
+        // The project and branch of each worktree, cached per directory for the poll
+        const projects = new Map<string, ReturnType<typeof projectOf>>()
+        const projectAt = (where: string) => {
+          const project = projects.get(where) ?? projectOf(where)
+          projects.set(where, project)
+          return project
+        }
         const described = await Promise.all(
           sessions.map(async session => {
             const facts = await describe(session.agent, now, session.status !== session.before?.status)
@@ -1244,7 +1286,9 @@ export const register: Register = on => {
             // as when its reply ended asking the user something:
             // it has nothing to do until its next task, and the fixing session asks the user.
             const status = session.status === 'blocked' && facts.task === undefined ? 'idle' : session.status
-            const hasNewChanges = await hasChangedSince(facts.snapshots, dir, file.repos, currentOf)
+            const snapshots = facts.snapshots ?? []
+            const places = await placesOf(snapshots, facts.paths ?? [], dir, file.repos)
+            const dirty = await Promise.all(snapshots.map((snapshot, i) => isDirty(snapshot, places[i], currentOf)))
             // Busy, on its task or after its result, as on a background run it left behind,
             // or idle with its task out, as on a background run of its own or once ended
             const id = session.agent.sessionId ?? ''
@@ -1253,13 +1297,13 @@ export const register: Register = on => {
             const isWatched = status === 'busy' || (status === 'idle' && facts.task !== undefined)
             const floor = Math.max(awakeAt, seenSince.get(id)?.at ?? now)
             const quietSince = isWatched && !file.isPaused ? await quietSinceOf(id, now, floor) : undefined
-            return { ...session, status, facts, hasNewChanges, quietSince }
+            return { ...session, status, facts, quietSince, places, dirty }
           }),
         )
 
         const reviewers = described.map(
-          ({ label, agent, status, facts, hasNewChanges, quietSince }): Reviewer => {
-            const { task, lastFound, ...about } = facts
+          ({ label, agent, status, facts, quietSince }): Reviewer => {
+            const { task, lastFound, paths, ...about } = facts
             return {
               label,
               status,
@@ -1269,16 +1313,44 @@ export const register: Register = on => {
               ...(quietSince !== undefined && { quietSince }),
               findings: file.findings[label.slice(-1).toUpperCase()] ?? 0,
               ...(lastFound !== undefined && { lastFound: lastFound[label.slice(-1).toUpperCase()] ?? 0 }),
-              hasNewChanges,
               ...about,
               startedAt: about.startedAt ?? agent.startedAt,
             }
           },
         )
+        // The snapshots of the review sessions' last tasks, each in its worktree once
+        const placed = new Map<string, { one: Snapshot; where?: string }>()
+        for (const { label, facts, places, dirty } of described) {
+          for (const [i, commit] of (facts.snapshots ?? []).entries()) {
+            const where = places[i]
+            const key = `${where ?? ''}\0${commit}`
+            const known = placed.get(key) ?? { one: { commit, labels: [], hasNewChanges: dirty[i] }, where }
+            known.one.labels.push(label)
+            placed.set(key, known)
+          }
+        }
+        // with their projects and branches, by project, then by branch,
+        // those of no known project last,
+        // as the sort keeps a worktree's snapshots in the order of the rows and of their tasks
+        const snapshots = (
+          await Promise.all(
+            [...placed.values()].map(
+              async ({ one, where }): Promise<Snapshot> => ({
+                ...(where !== undefined && (await projectAt(where))),
+                ...one,
+              }),
+            ),
+          )
+        ).sort(
+          (a, b) =>
+            Number(a.project === undefined) - Number(b.project === undefined) ||
+            (a.project ?? '').localeCompare(b.project ?? '') ||
+            (a.branch ?? '').localeCompare(b.branch ?? ''),
+        )
         // Writing the rows drops an error that an earlier poll noted.
         const isPaused = file.isPaused
-        if (JSON.stringify({ reviewers, isPaused }) !== JSON.stringify(last)) {
-          await update($, board, () => ({ reviewers, isPaused }))
+        if (JSON.stringify({ reviewers, snapshots, isPaused }) !== JSON.stringify(last)) {
+          await update($, board, () => ({ reviewers, snapshots, isPaused }))
         }
 
         // Tell this session of a review session quiet on its task, or busy after its result,
@@ -1439,7 +1511,7 @@ export const register: Register = on => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text } = $.ui.resolve(e)
     const now = await $.clock.now()
-    const { reviewers, error, isPaused } = await read($, board)
+    const { reviewers, snapshots, error, isPaused } = await read($, board)
     // A window that has reset since the reading shows as 0 percent, until a new reading.
     const windows = (await read($, usage)).windows
       .filter(one => WINDOWS[one.kind] !== undefined)
@@ -1448,7 +1520,7 @@ export const register: Register = on => {
         const hasReset = one.resetsAt !== undefined && one.resetsAt <= now
         return `${WINDOWS[one.kind]} ${hasReset ? 0 : Math.round(one.percentUsed)}%`
       })
-    // The review sessions as two tables:
+    // The review sessions as three tables:
     // the first gives each its state,
     // with how long a busy one has run or a nudging one has been quiet, its model and effort,
     // and when it started.
@@ -1488,36 +1560,67 @@ export const register: Register = on => {
     )
     // A line under a table's header, as wide as its widest row
     const ruleOf = (lines: string[]) => '─'.repeat(Math.max(0, ...lines.map(line => Array.from(line).length)))
-    // The second gives its rounds, the findings that carry its letter,
-    // how many of them its last result gave new, when its last round finished and how long it took,
-    // the snapshots it last got,
-    // and whether the work is dirty, as it has changed since, or ? when that is not known.
+    // The second gives its round, the number of the last task it got,
+    // the findings that carry its letter and how many of them its last result gave new,
+    // when its last round finished, and how long all its rounds took and its last one.
+    // A pair shares a column, as `found / new`,
+    // the first of it set right under its name and the second left under its own,
+    // the counts to 99999 and 999 and the durations to 59m 59s or 99h 59m.
+    const pairOf = (first: string, second: string, widths: [number, number], gap = '   ') =>
+      `${first.padStart(widths[0])}${gap}${second.padEnd(widths[1])}`
     const rounds = linesOf(
       [
-        ['rw', 'rounds', 'found', 'new', 'finished', 'took', 'snapshot', 'dirty'],
+        [
+          'rw',
+          'round',
+          pairOf('found', 'new', [5, 3], ' / '),
+          'finished',
+          pairOf('time', 'last', [7, 7], ' / '),
+        ],
         ...reviewers.map(one => [
           one.label,
           String(one.rounds),
-          String(one.findings),
-          one.lastFound !== undefined ? String(one.lastFound) : '',
+          pairOf(String(one.findings), one.lastFound !== undefined ? String(one.lastFound) : '', [5, 3]),
           one.lastRoundAt !== undefined ? shortDateTime(one.lastRoundAt, now) : '',
-          one.lastRoundMs !== undefined ? elapsed(one.lastRoundMs) : '',
-          (one.snapshots ?? []).map(snapshot => snapshot.slice(0, 8)).join(', '),
+          pairOf(
+            one.totalMs !== undefined ? elapsed(one.totalMs) : '',
+            one.lastRoundMs !== undefined ? elapsed(one.lastRoundMs) : '',
+            [7, 7],
+          ),
+        ]),
+      ],
+      // The letter, the round, the findings, a finish such as 11-19 03:03, and the durations
+      [{ width: 2 }, { isNumber: true, width: 5 }, { width: 11 }, { width: 11 }, { width: 17 }],
+    )
+    // The third gives each snapshot of their last tasks:
+    // its project, as a repository's name,
+    // and the branch of its worktree, or the name of its folder when it is detached,
+    // or ? for each when it is in none of the review's repositories,
+    // the snapshot, the review sessions whose last task names it, by their labels,
+    // and whether the work is dirty there, as it has changed since, or ? when that is not known.
+    // Its cells are cut to keep its rows within the pane:
+    // the labels past 26 characters, as many as the letters,
+    // the branch to the room left, and the project too when the branch is down to 6 characters.
+    const labelsOf = (labels: string[]) => labels.join(labels.every(one => one.length === 1) ? '' : ' ')
+    const rwWidth = Math.min(26, Math.max(2, ...snapshots.map(one => labelsOf(one.labels).length)))
+    // The room for the project and the branch, left by the gaps, the snapshot, the labels and dirty
+    const room = COLUMNS - 3 - (2 + 2 + 8 + 2 + rwWidth + 2 + 5)
+    const longest = Math.max(...snapshots.map(one => (one.project ?? '?').length))
+    const projectWidth = Math.max(7, Math.min(longest, room - 6))
+    const branchWidth = Math.max(6, room - projectWidth)
+    const cut = (text: string, width: number) => (text.length > width ? `${text.slice(0, width - 1)}…` : text)
+    const snapshotLines = linesOf(
+      [
+        ['project', 'branch', 'snapshot', 'rw', 'dirty'],
+        ...snapshots.map(one => [
+          cut(one.project ?? '?', projectWidth),
+          cut(one.branch ?? '?', branchWidth),
+          one.commit.slice(0, 8),
+          cut(labelsOf(one.labels), rwWidth),
           one.hasNewChanges === undefined ? '?' : one.hasNewChanges ? 'yes' : 'no',
         ]),
       ],
-      // The letter, the counts, a finish such as 11-19 03:03, a duration to 59m 59s, a snapshot,
-      // and yes or no
-      [
-        { width: 2 },
-        { isNumber: true, width: 6 },
-        { isNumber: true, width: 5 },
-        { isNumber: true, width: 3 },
-        { width: 11 },
-        { isNumber: true, width: 7 },
-        { width: 8 },
-        { width: 5 },
-      ],
+      [{ width: 7 }, { width: 6 }, { width: 8 }, { width: rwWidth }, { width: 5 }],
     )
 
     return (
@@ -1551,6 +1654,13 @@ export const register: Register = on => {
         {reviewers.length > 0 && <Text>{rounds[0]}</Text>}
         {reviewers.length > 0 && <Text dimColor>{ruleOf(rounds)}</Text>}
         {reviewers.length > 0 && rounds.slice(1).map(line => <Text dimColor>{line}</Text>)}
+        {snapshots.length > 0 && <Text> </Text>}
+        {snapshots.length > 0 && <Text> </Text>}
+        {snapshots.length > 0 && <Text>REVIEW SNAPSHOTS</Text>}
+        {snapshots.length > 0 && <Text> </Text>}
+        {snapshots.length > 0 && <Text>{snapshotLines[0]}</Text>}
+        {snapshots.length > 0 && <Text dimColor>{ruleOf(snapshotLines)}</Text>}
+        {snapshots.length > 0 && snapshotLines.slice(1).map(line => <Text dimColor>{line}</Text>)}
         {error !== undefined && <Text> </Text>}
         {error !== undefined && (
           <Text color="error">

@@ -46,7 +46,7 @@ Once the user ends the review, withdraw each task still out, as above,
 only from the review sessions that `ListAgents` still lists,
 as one that has ended gets no task again,
 and once all have confirmed,
-remove each review session's worktree with `git worktree remove --force`, as nothing else does,
+remove each review session's worktrees with `git worktree remove --force`, as nothing else does,
 and take their Attach lines and "Paused." out of the review file,
 so that neither the plugin nor a later `add` counts them as this session's.
 This session's review sessions are the ones named by the Attach lines of its review file,
@@ -104,7 +104,9 @@ Tell the arguments apart by their values:
   with `<remote>` the remote whose range holds the fewest commits, of those with a `HEAD`,
   as a fork's branch may track the fork, or nothing, while its work starts at `upstream`:
   it starts at that remote's default branch,
-  so that unpushed commits on the local default branch count too.
+  so that unpushed commits on the local default branch count too,
+  or for a branch stacked on another of the work, from `git merge-base <that branch> <commit>`,
+  so that no commit is reviewed twice.
   A later review session's range starts where the review file's header says the range starts,
   so that a push meanwhile narrows none.
   When no remote has a `HEAD`, or the range is empty, ask the user for the target.
@@ -132,7 +134,8 @@ Each `/autoreview add` starts a new one, even while others run.
 Take a snapshot, then,
 with the next letter that no Attach line or finding heading of the review file carries
 and no `<name>-rw-<letter>` uses,
-whether `claude agents --json --all` lists it or `git worktree list` holds its worktree,
+whether `claude agents --json --all` lists it or `git worktree list` holds a worktree of it,
+`<name>-rw-<letter>` or one with `-<folder>` added, per Several repositories,
 create the review session's worktree at the snapshot and start the review session in it.
 When the letters up to `z` are all taken, ask the user instead.
 
@@ -370,6 +373,15 @@ so that the review session reviews and checks only this session's.
 
 When the work spans several repositories, keep one review file and one set of review sessions,
 and treat every repository alike.
+Count each worktree of the work as a repository of its own,
+as when the work is split into branches of one repository, each in a worktree,
+such as one to deploy now and one to clean up later,
+since every review session reviews all of this session's work.
+Leave out a repository whose snapshot holds nothing past where its range would start,
+as a worktree with no commits of the work yet,
+from the target, the snapshots and the checkout lines until it holds something,
+but give the review sessions their worktrees there all the same,
+so that their settings allow moving those once it does.
 Run each repository's commands in it, as `( cd '<repository>' && ... )`,
 since this session may run outside all of them, such as in a directory that holds them.
 Take the repositories in the order the target names them:
@@ -379,6 +391,8 @@ Take the repositories in the order the target names them:
   and give it a line per repository of where the review sessions' range starts there.
 - Give each review session a worktree in each repository,
   at `<that repository's main worktree>/.claude/worktrees/<name>-rw-<letter>`,
+  with `-<folder>` added for each further worktree of the work in the same repository,
+  `<folder>` being the name of that worktree's folder,
   and start it in the worktree of the first repository, as it runs in one.
   Allow the two commands of the settings for each of its worktrees,
   and in its rules name every worktree with its repository in place of the one,
@@ -388,11 +402,26 @@ Take the repositories in the order the target names them:
   and have the session move and read the others by their paths, temporary ones included.
 - Take a snapshot in each repository, and open each task with all of them, in that order,
   as `Snapshots <commit>, <commit>: run /code-review ...`, which the `reviewers` plugin reads,
-  naming each repository's path with its snapshot below that line.
+  with a line `<absolute repository path>: <commit>` per repository below it,
+  even for a task of one,
+  by which the plugin tells the worktree of each snapshot,
+  as the worktrees of a repository hold each other's commits.
 - Give `/code-review` one target that names every repository's range alike,
   as `the range <start>..<commit> in <repository path> and the range ...`:
   one review of them all finds what it would in each,
   where a review per repository multiplies the cost by their number.
+
+When the work takes in another repository later,
+create each review session's worktree there as for a new one,
+and give it the rules naming every worktree in every task, per Older and adopted review sessions,
+since those it got at launch name only the first ones;
+where its settings do not allow moving the new worktree, the rules' temporary worktree serves.
+
+A session with several review files, as from before a split of the work counted as one review,
+merges them into the first:
+move the others' findings, checkout lines, range lines and Attach lines into it,
+take the Attach lines out of the others, so that the plugin finds the first alone,
+and give each review session the worktrees it lacks, as above.
 
 ## End of every reply
 
