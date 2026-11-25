@@ -6,7 +6,7 @@ import type { Board, Reviewer, Snapshot, Usage } from '../types'
 const PANE = 'reviewers'
 const TITLE = 'Reviewers'
 // Leave 3 columns past the longest row, 60 columns, a row of the snapshots table,
-// whose branch is cut to fit, to 23 characters with a project of 13 and 3 review sessions,
+// whose branch is cut to fit, to 22 characters with a project of 13 and 3 review sessions,
 // since the narrowest dock, 24 columns, would wrap it
 const COLUMNS = 63
 
@@ -1597,21 +1597,25 @@ export const register: Register = on => {
     // and the branch of its worktree, or the name of its folder when it is detached,
     // or ? for each when it is in none of the review's repositories,
     // the snapshot, the review sessions whose last task names it, by their labels,
-    // and whether the work is dirty there, as it has changed since, or ? when that is not known.
+    // and whether they are behind, as the work there has changed since,
+    // or ? when that is not known.
     // Its cells are cut to keep its rows within the pane:
-    // the labels past 26 characters, as many as the letters,
+    // the labels to what leaves the project and the branch the 7 and 6 characters of their headers,
     // the branch to the room left, and the project too when the branch is down to 6 characters.
     const labelsOf = (labels: string[]) => labels.join(labels.every(one => one.length === 1) ? '' : ' ')
-    const rwWidth = Math.min(26, Math.max(2, ...snapshots.map(one => labelsOf(one.labels).length)))
-    // The room for the project and the branch, left by the gaps, the snapshot, the labels and dirty
-    const room = COLUMNS - 3 - (2 + 2 + 8 + 2 + rwWidth + 2 + 5)
+    // The room for the project, the branch and the labels,
+    // left by the gaps, the snapshot and behind
+    const free = COLUMNS - 3 - (2 + 2 + 8 + 2 + 2 + 6)
+    const rwWidth = Math.min(free - 7 - 6, Math.max(2, ...snapshots.map(one => labelsOf(one.labels).length)))
+    // The room for the project and the branch
+    const room = free - rwWidth
     const longest = Math.max(...snapshots.map(one => (one.project ?? '?').length))
     const projectWidth = Math.max(7, Math.min(longest, room - 6))
     const branchWidth = Math.max(6, room - projectWidth)
     const cut = (text: string, width: number) => (text.length > width ? `${text.slice(0, width - 1)}…` : text)
     const snapshotLines = linesOf(
       [
-        ['project', 'branch', 'snapshot', 'rw', 'dirty'],
+        ['project', 'branch', 'snapshot', 'rw', 'behind'],
         ...snapshots.map(one => [
           cut(one.project ?? '?', projectWidth),
           cut(one.branch ?? '?', branchWidth),
@@ -1620,7 +1624,7 @@ export const register: Register = on => {
           one.hasNewChanges === undefined ? '?' : one.hasNewChanges ? 'yes' : 'no',
         ]),
       ],
-      [{ width: 7 }, { width: 6 }, { width: 8 }, { width: rwWidth }, { width: 5 }],
+      [{ width: 7 }, { width: 6 }, { width: 8 }, { width: rwWidth }, { width: 6 }],
     )
 
     return (
