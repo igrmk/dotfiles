@@ -36,20 +36,24 @@ install_linux() {
 	fetch "$icons_url/twiskers.svg" "$icon_path"
 	echo "installed $icon_path"
 
-	local source_entry
-	for dir in /usr/share/applications /usr/local/share/applications /var/lib/snapd/desktop/applications; do
-		[ -f "$dir/kitty.desktop" ] && source_entry="$dir/kitty.desktop" && break
-	done
-	if [ -z "${source_entry:-}" ]; then
-		echo "no kitty.desktop found to copy, leaving the launcher icon alone" >&2
-		return
+	# Edit an existing entry in place, as dotfiles-install-kitty points it at kitty's upstream build
+	local user_entry="$HOME/.local/share/applications/kitty.desktop"
+	if [ ! -f "$user_entry" ]; then
+		local source_entry
+		for dir in /usr/share/applications /usr/local/share/applications /var/lib/snapd/desktop/applications; do
+			[ -f "$dir/kitty.desktop" ] && source_entry="$dir/kitty.desktop" && break
+		done
+		if [ -z "${source_entry:-}" ]; then
+			echo "no kitty.desktop, run dotfiles-install-kitty first" >&2
+			return
+		fi
+		install -d -m 700 "$(dirname "$user_entry")"
+		cp "$source_entry" "$user_entry"
 	fi
 
 	# The Icon key must be an absolute path, otherwise it is looked up in the icon theme.
-	local user_entry="$HOME/.local/share/applications/kitty.desktop"
-	install -d -m 700 "$(dirname "$user_entry")"
-	sed "s|^Icon=.*|Icon=$icon_path|" "$source_entry" > "$user_entry"
-	echo "installed $user_entry pointing at $icon_path"
+	sed -i "s|^Icon=.*|Icon=$icon_path|" "$user_entry"
+	echo "pointed $user_entry at $icon_path"
 
 	if command -v update-desktop-database >/dev/null 2>&1; then
 		update-desktop-database "$(dirname "$user_entry")"

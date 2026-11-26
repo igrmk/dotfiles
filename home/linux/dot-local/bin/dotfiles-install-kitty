@@ -41,5 +41,9 @@ ln -sf "$app/bin/kitty" "$app/bin/kitten" "$HOME/.local/bin/"
 sed -E -e "s|^((Try)?Exec)=kitty|\1=$app/bin/kitty|" \
 	-e "s|^Icon=kitty|Icon=$app/share/icons/hicolor/256x256/apps/kitty.png|" \
 	"$app/share/applications/kitty.desktop" > "$HOME/.local/share/applications/kitty.desktop"
+# Put the custom icon back on the new launcher
+if command -v dotfiles-set-kitty-icon >/dev/null; then
+	dotfiles-set-kitty-icon
+fi
 
 echo "Installed kitty $version"
