@@ -49,4 +49,7 @@
   the same goes for an amend or a squash.
 - Write plain-text prose docs and code comments per the `reflow` skill.
 - In `--` comments, mark list items with `*`, not `-`.
+- Describe in a comment or doc what the thing is and does for good,
+  not how it differs from its previous states or what it replaces;
+  mention those in passing, if they need mentioning at all.
 - Before testing nvim, read `~/.claude/docs/nvim.md`.
