@@ -6,14 +6,14 @@ import type { Board, Reviewer, Snapshot, Usage } from '../types'
 const PANE = 'reviewers'
 const TITLE = 'Reviewers'
 // Leave 2 columns past the longest row, 64 columns, a row of the snapshots table,
-// whose branch is cut to fit, to 33 characters at most, with a project of 7 and 2 review sessions,
+// whose branch is cut to fit, to 36 characters at most, with a repo of 4 and 2 review sessions,
 // since the narrowest dock, 24 columns, would wrap it
 const COLUMNS = 66
 
 // Change a tag when its value's fields change:
 // it declines what an earlier version stored, which outlives a reload.
 const board = atom({ plugin: 'reviewers', key: 'board' } as const, { reviewers: [], snapshots: [] } as Board, {
-  shape: 'board-24',
+  shape: 'board-25',
 })
 const closed = atom({ plugin: 'reviewers', key: 'closed' } as const, false, { shape: 'closed-1' })
 const usage = atom({ plugin: 'reviewers', key: 'usage' } as const, { at: 0, windows: [] } as Usage, {
@@ -839,7 +839,7 @@ export const register: Register = on => {
     // A worktree's repository, by the name of its main worktree's folder,
     // the name of its own folder, and its git folder,
     // cached for good once found, as none of them changes
-    const layouts = new Map<string, Promise<{ project: string; folder: string; gitDir: string } | undefined>>()
+    const layouts = new Map<string, Promise<{ repo: string; folder: string; gitDir: string } | undefined>>()
     const layoutOf = (where: string) => {
       const known = layouts.get(where)
       if (known !== undefined) return known
@@ -853,7 +853,7 @@ export const register: Register = on => {
         // As mainOf finds the main worktree
         const root = common.endsWith('/.git') ? common.slice(0, -'/.git'.length) : common
         const nameOf = (path: string) => path.slice(path.lastIndexOf('/') + 1)
-        return { project: nameOf(root), folder: nameOf(top), gitDir }
+        return { repo: nameOf(root), folder: nameOf(top), gitDir }
       })
       layouts.set(where, layout)
       return layout
@@ -861,7 +861,7 @@ export const register: Register = on => {
     // A worktree's repository, and the branch checked out in it now, read from its HEAD file,
     // which names it even before its first commit, or from git when that file is reftable's stub,
     // or the name of its own folder when it is detached
-    const projectOf = async (where: string) => {
+    const worktreeOf = async (where: string) => {
       const layout = await layoutOf(where)
       if (layout === undefined) return undefined
       const head = await $.fs.read(`${layout.gitDir}/HEAD`).catch(() => undefined)
@@ -869,7 +869,7 @@ export const register: Register = on => {
       const named = /^ref: refs\/heads\/(.+)$/m.exec(head)?.[1]
       const branch =
         named === '.invalid' ? await run(['git', 'symbolic-ref', '--quiet', '--short', 'HEAD'], { cwd: where }) : named
-      return { project: layout.project, branch: branch ?? layout.folder }
+      return { repo: layout.repo, branch: branch ?? layout.folder }
     }
     // The main worktree where this session's review file was last found,
     // with the session it was for, kept in the store for a resume,
@@ -1310,12 +1310,12 @@ export const register: Register = on => {
           currents.set(where, current)
           return current
         }
-        // The project and branch of each worktree, cached per directory for the poll
-        const projects = new Map<string, ReturnType<typeof projectOf>>()
-        const projectAt = (where: string) => {
-          const project = projects.get(where) ?? projectOf(where)
-          projects.set(where, project)
-          return project
+        // The repo and branch of each worktree, cached per directory for the poll
+        const worktrees = new Map<string, ReturnType<typeof worktreeOf>>()
+        const worktreeAt = (where: string) => {
+          const worktree = worktrees.get(where) ?? worktreeOf(where)
+          worktrees.set(where, worktree)
+          return worktree
         }
         const described = await Promise.all(
           sessions.map(async session => {
@@ -1368,22 +1368,22 @@ export const register: Register = on => {
             placed.set(key, known)
           }
         }
-        // with their projects and branches, by project, then by branch,
-        // those of no known project last,
+        // with their repos and branches, by repo, then by branch,
+        // those of no known repo last,
         // as the sort keeps a worktree's snapshots in the order of the rows and of their tasks
         const snapshots = (
           await Promise.all(
             [...placed.values()].map(
               async ({ one, where }): Promise<Snapshot> => ({
-                ...(where !== undefined && (await projectAt(where))),
+                ...(where !== undefined && (await worktreeAt(where))),
                 ...one,
               }),
             ),
           )
         ).sort(
           (a, b) =>
-            Number(a.project === undefined) - Number(b.project === undefined) ||
-            (a.project ?? '').localeCompare(b.project ?? '') ||
+            Number(a.repo === undefined) - Number(b.repo === undefined) ||
+            (a.repo ?? '').localeCompare(b.repo ?? '') ||
             (a.branch ?? '').localeCompare(b.branch ?? ''),
         )
         // Writing the rows drops an error that an earlier poll noted.
@@ -1634,7 +1634,7 @@ export const register: Register = on => {
       [{ width: 2 }, { isNumber: true, width: 5 }, { width: 11 }, { width: 11 }, { width: 17 }],
     )
     // The third gives each snapshot of their last tasks:
-    // its project, as a repository's name,
+    // its repo, by the name of the repository's main worktree's folder,
     // and the branch of its worktree, or the name of its folder when it is detached,
     // or ? for each when it is in none of the review's repositories,
     // or when the worktree its task named for it is gone and its checkout line does not hold it,
@@ -1642,31 +1642,31 @@ export const register: Register = on => {
     // and whether they are behind, as the work there has changed since,
     // or ? when that is not known.
     // Its cells are cut to keep its rows within the pane:
-    // the labels to what leaves the project and the branch the 7 and 6 characters of their headers,
-    // the branch to the room left, and the project too when the branch is down to 6 characters.
+    // the labels to what leaves the repo and the branch the 4 and 6 characters of their headers,
+    // the branch to the room left, and the repo too when the branch is down to 6 characters.
     const labelsOf = (labels: string[]) => labels.join(labels.every(one => one.length === 1) ? '' : ' ')
-    // The room for the project, the branch and the labels,
+    // The room for the repo, the branch and the labels,
     // left by the gaps, the snapshot and behind
     const free = COLUMNS - 2 - (2 + 2 + 8 + 2 + 2 + 6)
-    const rwWidth = Math.min(free - 7 - 6, Math.max(2, ...snapshots.map(one => labelsOf(one.labels).length)))
-    // The room for the project and the branch
+    const rwWidth = Math.min(free - 4 - 6, Math.max(2, ...snapshots.map(one => labelsOf(one.labels).length)))
+    // The room for the repo and the branch
     const room = free - rwWidth
-    const longest = Math.max(...snapshots.map(one => (one.project ?? '?').length))
-    const projectWidth = Math.max(7, Math.min(longest, room - 6))
-    const branchWidth = Math.max(6, room - projectWidth)
+    const longest = Math.max(...snapshots.map(one => (one.repo ?? '?').length))
+    const repoWidth = Math.max(4, Math.min(longest, room - 6))
+    const branchWidth = Math.max(6, room - repoWidth)
     const cut = (text: string, width: number) => (text.length > width ? `${text.slice(0, width - 1)}…` : text)
     const snapshotLines = linesOf(
       [
-        ['project', 'branch', 'snapshot', 'rw', 'behind'],
+        ['repo', 'branch', 'snapshot', 'rw', 'behind'],
         ...snapshots.map(one => [
-          cut(one.project ?? '?', projectWidth),
+          cut(one.repo ?? '?', repoWidth),
           cut(one.branch ?? '?', branchWidth),
           one.commit.slice(0, 8),
           cut(labelsOf(one.labels), rwWidth),
           one.hasNewChanges === undefined ? '?' : one.hasNewChanges ? 'yes' : 'no',
         ]),
       ],
-      [{ width: 7 }, { width: 6 }, { width: 8 }, { width: rwWidth }, { width: 6 }],
+      [{ width: 4 }, { width: 6 }, { width: 8 }, { width: rwWidth }, { width: 6 }],
     )
 
     return (

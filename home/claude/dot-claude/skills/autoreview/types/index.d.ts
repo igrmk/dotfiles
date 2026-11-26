@@ -54,7 +54,7 @@ export type Snapshot = {
   // or the name of the worktree's folder when it is detached;
   // both absent when the snapshot is in none of the review's repositories,
   // or when the worktree its task named for it is gone and its checkout line does not hold it
-  project?: string
+  repo?: string
   branch?: string
   commit: string
   // The labels of the review sessions whose last task names it
