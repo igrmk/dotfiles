@@ -149,7 +149,8 @@ type Facts = Pick<
   // The input tokens its last response was answered over, and the ID of the model it last ran
   context?: number
   modelId?: string
-  // When a withdrawal took the last of its tasks out, until it gets another or sends a result
+  // When a withdrawal took the last of its tasks out, until it gets another,
+  // as a result frees no task while none is out
   withdrawnAt?: number
 }
 // A task as sent: its snapshots, one per repository, when it was sent,
@@ -351,7 +352,6 @@ function tally(sum: Tally, lines: string[]): void {
         sum.done = [...sum.done, ...sum.pending.slice(0, i + 1).flatMap(task => task.snapshots)].slice(-MAX_DONE)
         sum.pending.splice(0, i + 1)
         sum.freedAt = send.at
-        sum.withdrawnAt = undefined
         // A finding is new when its number passes the highest that earlier results gave its letter.
         const highest = { ...sum.highest }
         const found: Record<string, number> = {}
