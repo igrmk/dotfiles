@@ -15,7 +15,7 @@ const COLUMNS = 70
 // Change a tag when its value's fields change:
 // it declines what an earlier version stored, which outlives a reload.
 const board = atom({ plugin: 'reviewers', key: 'board' } as const, { reviewers: [], snapshots: [] } as Board, {
-  shape: 'board-27',
+  shape: 'board-28',
 })
 const closed = atom({ plugin: 'reviewers', key: 'closed' } as const, false, { shape: 'closed-1' })
 const usage = atom({ plugin: 'reviewers', key: 'usage' } as const, { at: 0, windows: [] } as Usage, {
@@ -149,6 +149,8 @@ type Facts = Pick<
   // The input tokens its last response was answered over, and the ID of the model it last ran
   context?: number
   modelId?: string
+  // When a withdrawal took the last of its tasks out, until it gets another or sends a result
+  withdrawnAt?: number
 }
 // A task as sent: its snapshots, one per repository, when it was sent,
 // and the path of each snapshot's worktree that it names, by the snapshot's commit
@@ -349,6 +351,7 @@ function tally(sum: Tally, lines: string[]): void {
         sum.done = [...sum.done, ...sum.pending.slice(0, i + 1).flatMap(task => task.snapshots)].slice(-MAX_DONE)
         sum.pending.splice(0, i + 1)
         sum.freedAt = send.at
+        sum.withdrawnAt = undefined
         // A finding is new when its number passes the highest that earlier results gave its letter.
         const highest = { ...sum.highest }
         const found: Record<string, number> = {}
@@ -379,6 +382,7 @@ function tally(sum: Tally, lines: string[]): void {
       const kept = sum.pending.filter(task => !isWithdrawn(task))
       // The task under way ends with its withdrawal, and the next one starts then, as on a result.
       if (sum.pending[0] !== undefined && isWithdrawn(sum.pending[0])) sum.freedAt = at
+      if (kept.length === 0 && sum.pending.length > 0) sum.withdrawnAt = at
       sum.rounds -= sum.pending.length - kept.length
       sum.pending = kept
       continue
@@ -396,6 +400,7 @@ function tally(sum: Tally, lines: string[]): void {
       snapshots.every(one => holds(task, one))
     if (sum.pending.some(isSame)) continue
     sum.startedAt ??= at
+    sum.withdrawnAt = undefined
     sum.pending.push({ snapshots, kind, at })
     sum.rounds += 1
   }
@@ -1571,7 +1576,7 @@ export const register: Register = on => {
             ownContext.window > 0 && { percent: Math.round((100 * tokens) / ownContext.window) }),
         })
         const reviewers = described.map(({ label, agent, status, facts, quietSince }): Reviewer => {
-          const { task, lastFound, done, lastTask, spent, context, modelId, ...about } = facts
+          const { task, lastFound, done, lastTask, spent, context, modelId, withdrawnAt, ...about } = facts
           // The tokens of its round under way, from when its clock started, else of its last one
           const round =
             task !== undefined
@@ -1586,6 +1591,8 @@ export const register: Register = on => {
             // and on its status alone otherwise, even with a task out
             ...((status === 'busy' || status === 'idle') && task && { task: task.kind, since: task.since }),
             ...(quietSince !== undefined && { quietSince }),
+            // Paused while the user has the review paused and the pause took its task
+            ...(file.isPaused && status === 'idle' && !task && withdrawnAt !== undefined && { pausedAt: withdrawnAt }),
             findings: file.findings[label.slice(-1).toUpperCase()] ?? 0,
             ...(lastFound !== undefined && { lastFound: lastFound[label.slice(-1).toUpperCase()] ?? 0 }),
             ...about,
@@ -1953,7 +1960,7 @@ export const register: Register = on => {
     // The second gives each its round under way, else its last:
     // its number, the state it is in,
     // with how long one on its task has run or a nudging one has been quiet,
-    // or when a finished one finished its last round,
+    // or when a paused one was paused, or a finished one finished its last round,
     // how long its last round took, how many new findings its last result gave, as found,
     // and the tokens of its round.
     const roundLines = linesOf(
@@ -1963,6 +1970,7 @@ export const register: Register = on => {
           one.label,
           String(one.rounds),
           // A waiting one shows as blocked, as either waits on the user,
+          // an idle one whose task a pause took as paused,
           // and an idle one with no task out as finished once it has finished a round.
           one.quietSince !== undefined
             ? 'nudging'
@@ -1971,16 +1979,20 @@ export const register: Register = on => {
                 ? 'busy'
                 : one.status === 'waiting'
                   ? 'blocked'
-                  : one.status === 'idle' && one.lastRoundAt !== undefined
-                    ? 'finished'
-                    : one.status)),
+                  : one.pausedAt !== undefined
+                    ? 'paused'
+                    : one.status === 'idle' && one.lastRoundAt !== undefined
+                      ? 'finished'
+                      : one.status)),
           one.quietSince !== undefined
             ? elapsed(now - one.quietSince)
             : one.since !== undefined
               ? elapsed(now - one.since)
-              : one.status === 'idle' && one.lastRoundAt !== undefined
-                ? shortDateTime(one.lastRoundAt, now)
-                : '',
+              : one.pausedAt !== undefined
+                ? shortDateTime(one.pausedAt, now)
+                : one.status === 'idle' && one.lastRoundAt !== undefined
+                  ? shortDateTime(one.lastRoundAt, now)
+                  : '',
           one.lastRoundMs !== undefined ? elapsed(one.lastRoundMs) : '',
           one.lastFound !== undefined ? String(one.lastFound) : '',
           ...tokenCells(one.roundTokens),
