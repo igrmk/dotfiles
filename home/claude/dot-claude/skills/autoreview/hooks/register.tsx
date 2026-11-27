@@ -15,7 +15,7 @@ const COLUMNS = 70
 // Change a tag when its value's fields change:
 // it declines what an earlier version stored, which outlives a reload.
 const board = atom({ plugin: 'reviewers', key: 'board' } as const, { reviewers: [], snapshots: [] } as Board, {
-  shape: 'board-26',
+  shape: 'board-27',
 })
 const closed = atom({ plugin: 'reviewers', key: 'closed' } as const, false, { shape: 'closed-1' })
 const usage = atom({ plugin: 'reviewers', key: 'usage' } as const, { at: 0, windows: [] } as Usage, {
@@ -1649,9 +1649,13 @@ export const register: Register = on => {
         const snapshots = await Promise.all(
           rows.map(async ({ line, commit }): Promise<Snapshot> => {
             // Its worktree: the path the task named with it while that exists,
-            // else the line's directory
+            // else the line's directory,
+            // or for a review of one repository whose task named no path,
+            // where the snapshot script last ran for this session,
+            // which may be a worktree of its own
             const path = commit === undefined ? undefined : pathOf(commit)
-            const where = (await exists(path)) ? path : (await exists(line)) ? line : undefined
+            const place = path === undefined && file.repos.length === 1 ? dir : line
+            const where = (await exists(path)) ? path : (await exists(place)) ? place : undefined
             return {
               ...(where !== undefined && (await worktreeAt(where))),
               ...(commit !== undefined && {

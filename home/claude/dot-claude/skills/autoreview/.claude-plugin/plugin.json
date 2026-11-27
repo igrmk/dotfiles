@@ -1,6 +1,6 @@
 {
   "name": "reviewers",
   "version": "0.1.0",
-  "description": "Show the plan's usage and the autoreview review sessions of this session in a pane, with their states and whether they have seen the latest work, and tell the session of a review session quiet or blocked on its task",
+  "description": "Show the plan's usage, the autoreview review sessions of this session and this session as their developer in a pane, the Autoreview Cockpit, with their states, rounds, tokens and context windows and each repository's snapshot in the last task sent, and tell the session of a review session quiet or blocked on its task and of the week's usage reaching the review's limit",
   "types": "./types/index.d.ts"
 }
