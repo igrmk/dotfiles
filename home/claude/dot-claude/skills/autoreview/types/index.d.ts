@@ -99,6 +99,9 @@ export type Board = {
   snapshots: Snapshot[]
   // Whether the review file says the user has the review paused
   isPaused?: boolean
+  // The share of the plan's weekly usage at which the review pauses, in percent,
+  // as the review file gives it
+  weekLimit?: number
   // A failure of the pane's own that keeps the rows from being current,
   // such as `claude agents` failing, and when it began, in milliseconds since the epoch
   error?: { text: string; since: number }

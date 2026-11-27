@@ -3,10 +3,10 @@ name: autoreview
 description: >-
   Run a review in the background: start review sessions that review snapshots of the work
   and send their findings here by message, fix them and send fix reports back,
-  and pause, resume or end the review.
+  pause, resume or end the review, and limit its weekly usage.
   Use when the user runs /autoreview or asks for a review session,
   and when findings arrive from a review session.
-argument-hint: "add [level] [model] [warm] [target] | pause | resume | end"
+argument-hint: "add [level] [model] [warm] [limit <N>] [target] | pause | resume | end | limit <N|off>"
 ---
 
 # autoreview
@@ -91,6 +91,19 @@ The first argument names what to do, else it is `add`:
 - `pause` pauses the review, as above.
 - `resume` resumes it, as above.
 - `end` ends it, as above.
+- `limit <N>`, as `limit 80`, pauses the review once the plan's weekly usage reaches N percent,
+  and `limit off` drops that, per Weekly limit.
+
+## Weekly limit
+
+`limit <N>` sets the share of the plan's weekly usage at which the review pauses,
+in place of any set before:
+keep it as the line "The review pauses at <N>% of the week's usage." in the review file's header,
+which the `reviewers` plugin reads, and take that line out on `limit off`.
+Once the week's usage reaches that share, the plugin sends this session a message,
+once per week and share:
+then pause the review, as `pause` does, and tell the user in the reply.
+A resume the user asks for then holds until the week starts anew or the share changes.
 
 ## Arguments of `add`
 
@@ -105,6 +118,7 @@ Tell the arguments apart by their values:
   with a spoken name, such as `opus5.5`, turned into its ID, `claude-opus-5-5`;
 - `warm`, which starts the review session warm, on the last report sent to the others,
   instead of a `/code-review` of the whole target, as Start a review session says;
+- `limit <N>`, as `limit 85`, which sets the weekly limit as the `limit` verb does;
 - anything else is the target,
   else the range from `git merge-base <remote>/HEAD <commit>` to the snapshot,
   with `<remote>` the remote whose range holds the fewest commits, of those with a `HEAD`,

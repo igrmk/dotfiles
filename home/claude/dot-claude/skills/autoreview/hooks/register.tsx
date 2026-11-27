@@ -82,6 +82,9 @@ const HEADING = /^### ([A-Z])\d+\./gm
 // A checkout line of the review file's header, one per repository, with the directory it enters,
 // also when reworded, as after a merge, and broken before its command
 const CHECKOUT = /^Check out what was reviewed\b.*?(?:\n.*?)??`cd ([^`]+?)(?: && [^`]*)?`/gm
+// The line of the review file's header that gives the share of the plan's weekly usage
+// at which the review pauses, per the autoreview skill
+const WEEK_LIMIT = /^The review pauses at (\d{1,3})% of the week's usage\.$/m
 
 // A row with a clock redraws every tick.
 // Polls come every few seconds while a review session is busy, else rarely,
@@ -792,16 +795,19 @@ export const register: Register = on => {
       return resolved
     }
 
-    // What the review files tell, each cached until its size or time changes:
+    // What the review files tell, each cached until its size or time changes, with its path:
     // the sessions their headers name, the count of their findings by letter,
-    // whether the review is paused, and the directories of the reviewed repositories
+    // whether the review is paused, the share of the weekly usage at which it pauses,
+    // and the directories of the reviewed repositories
     type Parsed = {
+      path: string
       size: number
       mtimeMs: number
       ids: string[]
       attached: { name: string; sessionId?: string }[]
       findings: Record<string, number>
       isPaused: boolean
+      weekLimit?: number
       repos: string[]
     }
     const files = new Map<string, Parsed>()
@@ -1027,6 +1033,7 @@ export const register: Register = on => {
           const findings: Record<string, number> = {}
           for (const [, letter = ''] of text.matchAll(HEADING)) findings[letter] = (findings[letter] ?? 0) + 1
           file = {
+            path,
             size: entry.size,
             mtimeMs: entry.mtimeMs,
             ids: [...header.matchAll(RESUME)].map(([, one = '']) => one),
@@ -1034,6 +1041,7 @@ export const register: Register = on => {
             findings,
             // As the autoreview skill writes it while the user has the review paused
             isPaused: /^Paused\.$/m.test(header),
+            weekLimit: Number(WEEK_LIMIT.exec(header)?.[1] ?? Number.NaN) || undefined,
             repos: [...header.matchAll(CHECKOUT)].map(([, dir = '']) => dir),
           }
           files.set(path, file)
@@ -1410,6 +1418,10 @@ export const register: Register = on => {
     // The review sessions blocked on their tasks that this session was told of, by session ID,
     // each with when to tell of it again, never but after a notice that did not enter
     const blockedTold = new Map<string, number>()
+    // Whether a notice of the weekly limit is on its way,
+    // and when one that did not enter goes again
+    let isLimitTelling = false
+    let limitRetryAt = 0
     // Whether a poll of this load of the plugin has run
     let hasPolled = false
     // When the polls went on after a gap that means the machine slept
@@ -1653,9 +1665,46 @@ export const register: Register = on => {
           }),
         )
         // Writing the rows drops an error that an earlier poll noted.
-        const isPaused = file.isPaused
-        const rowsNow = { reviewers, developer, snapshots, isPaused }
+        const { isPaused, weekLimit } = file
+        const rowsNow = { reviewers, developer, snapshots, isPaused, weekLimit }
         if (JSON.stringify(rowsNow) !== JSON.stringify(last)) await update($, board, () => rowsNow)
+
+        // Tell this session once the plan's weekly usage reaches the share the review file gives,
+        // as the autoreview skill pauses the review then, unless it is paused already:
+        // once per week and share, kept in the store by the review file for a reload,
+        // and for the session the conversation goes on in under a new ID,
+        // so that a resume the user asks for holds until the week starts anew or the share changes.
+        const week = windows.find(one => one.kind === 'seven_day')
+        const hasWeekReset = week?.resetsAt !== undefined && week.resetsAt <= now
+        if (
+          weekLimit !== undefined &&
+          week !== undefined &&
+          !hasWeekReset &&
+          !isPaused &&
+          week.percentUsed >= weekLimit &&
+          !isLimitTelling &&
+          now >= limitRetryAt
+        ) {
+          // By the hour the week resets, as readings may give it to the millisecond apart
+          const key = `${weekLimit}:${week.resetsAt === undefined ? '' : Math.round(week.resetsAt / 3600000)}`
+          const storeKey = `weekLimitTold:${file.path}`
+          if ((await $.store.get(storeKey).catch(() => undefined)) !== key) {
+            isLimitTelling = true
+            const text =
+              `The plan's weekly usage is at ${Math.round(week.percentUsed)}%, ` +
+              `at the review's limit of ${weekLimit}%: pause the review, per the autoreview skill.`
+            void $.prompt
+              .submit({ text })
+              .then(async ran => {
+                if (ran.drop === undefined) await $.store.set(storeKey, key).catch(() => undefined)
+                else limitRetryAt = now + RETRY_MS
+              })
+              .catch(error => $.ui.log(`reviewers: ${String(error)}`, { to: 'debug' }))
+              .finally(() => {
+                isLimitTelling = false
+              })
+          }
+        }
 
         // Tell this session of a review session quiet on its task, or busy after its result,
         // as the autoreview skill checks on it then,
@@ -1815,7 +1864,7 @@ export const register: Register = on => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text } = $.ui.resolve(e)
     const now = await $.clock.now()
-    const { reviewers, developer, snapshots, error, isPaused } = await read($, board)
+    const { reviewers, developer, snapshots, error, isPaused, weekLimit } = await read($, board)
     // A window that has reset since the reading shows as 0 percent, until a new reading.
     const windows = (await read($, usage)).windows
       .filter(one => WINDOWS[one.kind] !== undefined)
@@ -2003,7 +2052,11 @@ export const register: Register = on => {
       <Box flexDirection="column">
         <Text bold>AUTOREVIEW COCKPIT</Text>
         <Text> </Text>
-        {windows.length > 0 && <Text>Usage: {windows.join(', ')}</Text>}
+        {windows.length > 0 && (
+          <Text>
+            Usage: {[...windows, ...(weekLimit === undefined ? [] : [`pause at ${weekLimit}%`])].join(', ')}
+          </Text>
+        )}
         {windows.length > 0 && <Text> </Text>}
         <Text>DEV AND REVIEWERS{isPaused ? ' (PAUSED)' : ''}</Text>
         <Text> </Text>
