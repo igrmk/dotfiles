@@ -365,10 +365,44 @@ opt.fixendofline = false
 opt.foldenable = false
 opt.langmap = 'ФИСВУАПРШОЛДЬТЩЗЙКЫЕГМЦЧНЯ;ABCDEFGHIJKLMNOPQRSTUVWXYZ,фисвуапршолдьтщзйкыегмцчня;abcdefghijklmnopqrstuvwxyz'
 
+-- Shorten a path like _short_pwd in zsh: ~/projects/kitty/kitty/docs/x.md becomes ~/p…/…/d…/x.md
+local function shorten_path(path)
+    local slash = #path > 1 and vim.endswith(path, '/') and '/' or ''
+    local dirs = vim.split(path:sub(1, #path - #slash), '/', { plain = true })
+    local parts = {}
+    if dirs[1] == '' or dirs[1] == '~' then
+        table.insert(parts, table.remove(dirs, 1))
+    end
+    local last = table.remove(dirs)
+    local mid = {}
+    for _, dir in ipairs(dirs) do
+        local short = vim.fn.matchstr(dir, [[^\.\=.]])
+        table.insert(mid, vim.fn.strchars(dir) > vim.fn.strchars(short) + 1 and short .. '…' or dir)
+    end
+    if #mid > 3 then
+        mid = { mid[1], '…', mid[#mid] }
+    end
+    vim.list_extend(parts, mid)
+    table.insert(parts, last)
+    return table.concat(parts, '/') .. slash
+end
+
 function _G.title_with_shortened_path()
-    local path = vim.fn.expand('%:~:.')
+    local name = vim.api.nvim_buf_get_name(0)
+    if name == '' then
+        return '⌶'
+    end
+    local diff = name:match('^diffview://(.*)')
+    local oil = name:match('^oil://(.*)')
+    local path = vim.fn.fnamemodify(diff or oil or name, ':~:.')
+    if path == '' and oil then
+        path = vim.fn.fnamemodify(oil, ':~')
+    end
     if vim.fn.strchars(path) > 20 then
-        path = vim.fn.pathshorten(path)
+        path = shorten_path(path)
+    end
+    if diff then
+        path = '∆' .. path
     end
     return path == '' and '⌶' or '⌶ ' .. path
 end

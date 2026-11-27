@@ -19,16 +19,22 @@ get-terminal-background-color() {
 [ -n "$SSH_CONNECTION" ] && echo
 
 # Set the REPLY variable to the working directory, shortened, keeping a named directory's name whole
+# ~/projects/kitty/kitty becomes ~/p…/k…/kitty,
+# and ~/projects/kitty/kitty/docs/x becomes ~/p…/…/d…/x
 if [[ -n $ZSH_VERSION ]]; then
 	_short_pwd() {
-		setopt localoptions extendedglob
-		local head=
-		local -a match mbegin mend
-		REPLY=${(%):-%~}
-		if [[ $REPLY == \~[^/]##/* ]]; then
-			head=${REPLY%%/*}/
-			REPLY=${REPLY#*/}
-		fi
-		REPLY=$head${REPLY//(#b)((.|)[^\/])[^\/]#\//$match[1]/}
+		local p=${(%):-%~} head= dir short
+		local -a dirs mid parts
+		[[ $p == \~* ]] && head=${p%%/*}
+		dirs=(${(s:/:)p#$head})
+		for dir in $dirs[1,-2]; do
+			short=${(M)dir##(.|)?}
+			(( ${#dir} > ${#short} + 1 )) && dir=${short}…
+			mid+=($dir)
+		done
+		(( $#mid > 3 )) && mid[2,-2]=(…)
+		parts=("$head" $mid $dirs[-1])
+		REPLY=${(j:/:)parts}
+		REPLY=${REPLY:-/}
 	}
 fi
