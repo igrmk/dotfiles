@@ -35,6 +35,10 @@ and send no task until the user resumes the review, which an `add` does first;
 then send every review session one task at a new snapshot:
 its withdrawn task with what changed meanwhile added to its report,
 or for one that had none out, a report of what changed meanwhile, when anything did.
+When nothing changed since a withdrawn task whose run the review session stopped in the background,
+as a `/code-review` runs as `@code-review`, its review session goes on where it stopped:
+below the task's opening line, tell it to send that run a message to go on,
+rather than starting it again.
 
 Each review session works in a worktree of its own,
 `<main worktree>/.claude/worktrees/<name>-rw-<letter>`,
@@ -362,6 +366,12 @@ since the last snapshot sent, with the review file's path, opening with:
 ```
 Snapshot <commit>: run /check-fixes on this report.
 ```
+
+This goes for every change, new code, a new branch, new repositories and rewrites included:
+a review session gets `/code-review` only as it starts, unless warm, or when the user asks for one,
+as each costs a whole review per review session.
+Send the report even while a task is out, rather than withdrawing that task to widen it,
+as a review session starts a task only once it has sent the result of the one before.
 
 ## Other sessions' commits
 
