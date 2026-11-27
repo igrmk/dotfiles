@@ -45,3 +45,21 @@ shortcut $copy_screen_to_clipboard true "${key_j[@]}" $cmd
 
 # Apply the shortcuts without logging out
 /System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
+
+# Start KeepingYouAwake at login, not only when opened,
+# to show in the menu bar whether the Mac is kept awake
+if [ -d /Applications/KeepingYouAwake.app ]; then
+    osascript >/dev/null <<'EOF'
+tell application "System Events"
+    if not (exists login item "KeepingYouAwake") then
+        make login item at end with properties {path:"/Applications/KeepingYouAwake.app"}
+    end if
+end tell
+EOF
+    # Start it now too, without logging out,
+    # unless it runs already, as opening it again shows its settings window
+    pgrep -xq KeepingYouAwake || open -g /Applications/KeepingYouAwake.app
+else
+    echo "Install KeepingYouAwake with dotfiles-install-brew-packages" \
+        "and re-run ${0##*/} to start it at login." >&2
+fi
