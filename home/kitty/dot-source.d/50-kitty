@@ -127,9 +127,9 @@ fi
 # Set the tab's title to the command, else the short directory
 if [[ -n $ZSH_VERSION && $TERM == xterm-kitty && -z $TMUX ]]; then
 	_kitty_title_precmd() {
-		local REPLY
-		_short_pwd
-		print -rn -- $'\e]2;'"${SSH_CONNECTION:+${HOST%%.*}: }$REPLY"$'\a'
+		local REPLY host=${SSH_CONNECTION:+${HOST%%.*}: }
+		_short_pwd $(( 40 - ${(m)#host} ))
+		print -rn -- $'\e]2;'"$host$REPLY"$'\a'
 	}
 	_kitty_title_preexec() { print -rn -- $'\e]2;'"${SSH_CONNECTION:+${HOST%%.*}: }${(V)1}"$'\a'; }
 	precmd_functions+=(_kitty_title_precmd)

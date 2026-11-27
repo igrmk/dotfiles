@@ -365,26 +365,39 @@ opt.fixendofline = false
 opt.foldenable = false
 opt.langmap = 'ФИСВУАПРШОЛДЬТЩЗЙКЫЕГМЦЧНЯ;ABCDEFGHIJKLMNOPQRSTUVWXYZ,фисвуапршолдьтщзйкыегмцчня;abcdefghijklmnopqrstuvwxyz'
 
--- Shorten a path like _short_pwd in zsh: ~/projects/kitty/kitty/docs/x.md becomes ~/p…/…/d…/x.md
-local function shorten_path(path)
+-- Shorten a path like _short_pwd in zsh, only until it fits width
+local function shorten_path(path, width)
     local slash = #path > 1 and vim.endswith(path, '/') and '/' or ''
     local dirs = vim.split(path:sub(1, #path - #slash), '/', { plain = true })
-    local parts = {}
-    if dirs[1] == '' or dirs[1] == '~' then
-        table.insert(parts, table.remove(dirs, 1))
-    end
+    local head = (dirs[1] == '' or dirs[1] == '~') and table.remove(dirs, 1) or nil
     local last = table.remove(dirs)
-    local mid = {}
-    for _, dir in ipairs(dirs) do
-        local short = vim.fn.matchstr(dir, [[^\.\=.]])
-        table.insert(mid, vim.fn.strchars(dir) > vim.fn.strchars(short) + 1 and short .. '…' or dir)
+    local dropped = false
+    local function join(from)
+        local parts = { head }
+        if dropped then
+            table.insert(parts, '…')
+        end
+        vim.list_extend(parts, dirs, from)
+        table.insert(parts, last)
+        return table.concat(parts, '/') .. slash
     end
-    if #mid > 3 then
-        mid = { mid[1], '…', mid[#mid] }
+    local result = join(1)
+    for i = 1, #dirs do
+        if vim.fn.strdisplaywidth(result) <= width then
+            break
+        end
+        local short = vim.fn.matchstr(dirs[i], [[^\.\=.]])
+        if vim.fn.strdisplaywidth(dirs[i]) > vim.fn.strdisplaywidth(short) + 1 then
+            dirs[i] = short .. '…'
+            result = join(i)
+            if vim.fn.strdisplaywidth(result) <= width then
+                break
+            end
+        end
+        dropped = true
+        result = join(i + 1)
     end
-    vim.list_extend(parts, mid)
-    table.insert(parts, last)
-    return table.concat(parts, '/') .. slash
+    return result
 end
 
 function _G.title_with_shortened_path()
@@ -398,13 +411,9 @@ function _G.title_with_shortened_path()
     if path == '' and oil then
         path = vim.fn.fnamemodify(oil, ':~')
     end
-    if vim.fn.strchars(path) > 20 then
-        path = shorten_path(path)
-    end
-    if diff then
-        path = '∆' .. path
-    end
-    return path == '' and '⌶' or '⌶ ' .. path
+    local prefix = diff and '⌶ ∆' or '⌶ '
+    -- Fit the 40 cells tmux and kitty show of a title
+    return path == '' and '⌶' or prefix .. shorten_path(path, 40 - vim.fn.strdisplaywidth(prefix))
 end
 opt.title = true
 opt.titlestring = '%{v:lua.title_with_shortened_path()}'

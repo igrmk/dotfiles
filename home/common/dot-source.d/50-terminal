@@ -18,23 +18,34 @@ get-terminal-background-color() {
 # p10k drops its blank line on a new TTY, gluing the first prompt to the login banner
 [ -n "$SSH_CONNECTION" ] && echo
 
-# Set the REPLY variable to the working directory, shortened, keeping a named directory's name whole
-# ~/projects/kitty/kitty becomes ~/p…/k…/kitty,
-# and ~/projects/kitty/kitty/docs/x becomes ~/p…/…/d…/x
+# Set the REPLY variable to the working directory, keeping a named directory's name whole,
+# fit to the cells the first argument gives, else to the 40 cells tmux and kitty show.
+# Shorten middle directories from the left, each to its first letter and then into …,
+# only until it fits:
+# ~/projects/dotfiles/home/claude/dot-claude becomes ~/p…/dotfiles/home/claude/dot-claude,
+# and ~/projects/dotfiles/home/kitty/dot-config/kitty
+# becomes ~/…/dotfiles/home/kitty/dot-config/kitty.
 if [[ -n $ZSH_VERSION ]]; then
 	_short_pwd() {
-		local p=${(%):-%~} head= dir short
+		local p=${(%):-%~} width=${1:-40} head= dots= short i
 		local -a dirs mid parts
 		[[ $p == \~* ]] && head=${p%%/*}
 		dirs=(${(s:/:)p#$head})
-		for dir in $dirs[1,-2]; do
-			short=${(M)dir##(.|)?}
-			(( ${#dir} > ${#short} + 1 )) && dir=${short}…
-			mid+=($dir)
-		done
-		(( $#mid > 3 )) && mid[2,-2]=(…)
+		mid=($dirs[1,-2])
 		parts=("$head" $mid $dirs[-1])
 		REPLY=${(j:/:)parts}
+		for (( i = 1; i <= $#mid && ${(m)#REPLY} > width; i++ )); do
+			short=${(M)mid[i]##(.|)?}
+			if (( ${(m)#mid[i]} > ${(m)#short} + 1 )); then
+				mid[i]=${short}…
+				parts=("$head" $dots $mid[i,-1] $dirs[-1])
+				REPLY=${(j:/:)parts}
+				(( ${(m)#REPLY} <= width )) && break
+			fi
+			dots=…
+			parts=("$head" $dots $mid[i+1,-1] $dirs[-1])
+			REPLY=${(j:/:)parts}
+		done
 		REPLY=${REPLY:-/}
 	}
 fi
