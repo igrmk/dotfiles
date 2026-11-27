@@ -1,19 +1,21 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, SessionRateLimit, Timer } from 'claude-code'
 
-import type { Board, Reviewer, Snapshot, Usage } from '../types'
+import type { Board, Context, Developer, Reviewer, Snapshot, Tokens, Usage } from '../types'
 
 const PANE = 'reviewers'
-const TITLE = 'Reviewers'
-// Leave 2 columns past the longest row, 64 columns, a row of the snapshots table,
-// whose branch is cut to fit, to 36 characters at most, with a repo of 4 and 2 review sessions,
-// since the narrowest dock, 24 columns, would wrap it
-const COLUMNS = 66
+const TITLE = 'Autoreview Cockpit'
+// Leave 2 columns past the longest row, 68 columns:
+// a row of the snapshots table, whose branch is cut to fit,
+// to 40 characters at most, with a repo of 4 and 2 review sessions,
+// and a row of the sessions table, 68 columns at most, with its label column's header of 4,
+// since the narrowest dock, 24 columns, would wrap them
+const COLUMNS = 70
 
 // Change a tag when its value's fields change:
 // it declines what an earlier version stored, which outlives a reload.
 const board = atom({ plugin: 'reviewers', key: 'board' } as const, { reviewers: [], snapshots: [] } as Board, {
-  shape: 'board-25',
+  shape: 'board-26',
 })
 const closed = atom({ plugin: 'reviewers', key: 'closed' } as const, false, { shape: 'closed-1' })
 const usage = atom({ plugin: 'reviewers', key: 'usage' } as const, { at: 0, windows: [] } as Usage, {
@@ -38,6 +40,10 @@ const TASK = new RegExp(`(?:^|<cross-session-message[^>]*>\\s*)${opening(`(${COM
 const withdrawal = (commits: string) => `Withdraw snapshots? ${commits}\\.`
 // A withdrawal by its opening line, as the autoreview skill sends one
 const WITHDRAWAL = new RegExp(`(?:^|<cross-session-message[^>]*>\\s*)${withdrawal(`(${COMMITS})`)}`)
+// A task the fixing session sent,
+// as the opening of a message or of a launch's or a resume's prompt:
+// the snapshots and the skill it runs
+const SENT = new RegExp(`${opening(`(${COMMITS})`)}(code-review|check-fixes)`)
 // A line of a task below its opening that names a repository's path and its snapshot,
 // maybe as a list item
 const PATH = new RegExp(`^(?:- )?(/[^\\n:]*): (${COMMIT})$`, 'gm')
@@ -48,6 +54,11 @@ const TIMESTAMP = /"timestamp":"([^"]+)"/
 const QUEUED = '{"type":"queue-operation"'
 // The model and the effort a transcript records for each request
 const MODEL_OR_EFFORT = /"model":"(claude-[^"]*)"|"effort":"(low|medium|high|xhigh|max)"/g
+// The ID of the message an assistant line holds a part of,
+// as every line of it repeats it with its usage
+const MESSAGE_ID = /"id":"(msg_[0-9A-Za-z]+)"/
+// How many snapshots of its finished tasks, the newest, a review session keeps
+const MAX_DONE = 500
 // A result's first line names the autoreview skill, whatever the case,
 // or the add-review skill, as one sent under the rules from before its rename does,
 // and not as part of a session's name, which may hold it,
@@ -126,28 +137,43 @@ type Facts = Pick<
 > & {
   task?: { kind: Kind; since: number }
   lastFound?: Record<string, number>
-  // The snapshot commits of its last task not withdrawn, one per repository
-  snapshots?: string[]
-  // The path of the worktree of each of its snapshots, as its tasks named them
-  paths?: (string | undefined)[]
+  // The snapshots of every task it finished, the newest last
+  done: string[]
+  // The newest task it got, withdrawn or not
+  lastTask?: Sent
+  // What it and its subagents spent, as a list of times and tokens, per Spend
+  spent: number[]
+  // The input tokens its last response was answered over, and the ID of the model it last ran
+  context?: number
+  modelId?: string
+}
+// A task as sent: its snapshots, one per repository, when it was sent,
+// and the path of each snapshot's worktree that it names, by the snapshot's commit
+type Sent = { snapshots: string[]; at: number; pathOf: Record<string, string> }
+// The tokens of a transcript's responses read so far:
+// for each response done, its time, its input tokens, cache writes included, and its output tokens,
+// three numbers in a row,
+// and in each file, the response whose lines are being read,
+// with its input tokens, cache reads included, as well,
+// as two subagents write their files at once
+type Spend = {
+  spent: number[]
+  reading: Record<string, { id: string; at: number; input: number; output: number; context: number }>
 }
 // What the lines of a transcript read so far tell:
 // the tasks whose results have not come, less those withdrawn,
 // when the task before the current one ended, by its result or its withdrawal,
-// the snapshots of the newest task a result freed,
 // the results sent whose tool results have not come, by their tool uses' IDs,
 // the highest number its results gave each letter, the time of its last line,
-// the path of each snapshot's worktree that a task named, by its commit,
-// and the rest of the facts
+// the tokens of its responses, and the rest of the facts
 type Task = { snapshots: string[]; kind: Kind; at: number }
-type Tally = Omit<Facts, 'task' | 'paths'> & {
-  pathOf: Record<string, string>
+type Tally = Omit<Facts, 'task' | 'spent'> & {
   pending: Task[]
   freedAt: number
-  freedSnapshots?: string[]
   sends: { id: string; at: number; message: string }[]
   highest: Record<string, number>
   lastWriteAt?: number
+  spend: Spend
 }
 type Part = {
   type?: string
@@ -173,7 +199,75 @@ function textOf(content: unknown): string {
 
 // Whether a task names a commit among its snapshots, either of the two maybe abbreviated
 function holds(task: Task, commit: string): boolean {
-  return task.snapshots.some(one => one.startsWith(commit) || commit.startsWith(one))
+  return isSameCommit(task.snapshots, commit)
+}
+
+// Whether a list of commits holds a commit, either of the two maybe abbreviated
+function isSameCommit(commits: string[], commit: string): boolean {
+  return commits.some(one => one.startsWith(commit) || commit.startsWith(one))
+}
+
+// Add the tokens of a line of a transcript file to a spend, when it is a line of a response,
+// and return the input tokens that response was answered over, cache reads included.
+// Every line of a response repeats its usage,
+// so a response counts once, when the next one in its file starts.
+// Its usage is the last one of the line, past any a tool's input in it may hold,
+// and its time the line's last, as a string in it holds its quotes escaped.
+function addSpend(spend: Spend, line: string, file = ''): number | undefined {
+  if (!line.includes('"type":"assistant"')) return undefined
+  const usage = line.slice(line.lastIndexOf('"usage":{'))
+  const id = MESSAGE_ID.exec(line)?.[1]
+  const stamp = line.slice(line.lastIndexOf('"timestamp":"')).match(TIMESTAMP)?.[1]
+  const count = (name: string) => Number(usage.match(new RegExp(`"${name}":(\\d+)`))?.[1] ?? 0)
+  if (!usage.startsWith('"usage":{') || id === undefined || stamp === undefined) return undefined
+  const input = count('input_tokens') + count('cache_creation_input_tokens')
+  const message = {
+    id,
+    at: Date.parse(stamp) || 0,
+    input,
+    output: count('output_tokens'),
+    context: input + count('cache_read_input_tokens'),
+  }
+  const done = spend.reading[file]
+  if (done !== undefined && done.id !== id) spend.spent.push(done.at, done.input, done.output)
+  spend.reading[file] = message
+  return message.context
+}
+
+// Return the times and tokens of a spend's responses, those being read included.
+function spentOf(spend: Spend): number[] {
+  return [...spend.spent, ...Object.values(spend.reading).flatMap(one => [one.at, one.input, one.output])]
+}
+
+// Return the tokens of the responses that came from a time on, up to another, both included.
+function tokensIn(spent: number[], from = 0, to = Infinity): Tokens {
+  const tokens = { input: 0, output: 0 }
+  for (let i = 0; i + 2 < spent.length; i += 3) {
+    const at = spent[i] ?? 0
+    if (at < from || at > to) continue
+    tokens.input += spent[i + 1] ?? 0
+    tokens.output += spent[i + 2] ?? 0
+  }
+  return tokens
+}
+
+// Return the task a tool use of the fixing session sends, if any:
+// a message whose opening is a task's,
+// or a command that launches or resumes a review session with a task as its prompt.
+function sentBy(part: Part, at: number): Sent | undefined {
+  if (part.type !== 'tool_use') return undefined
+  const input = part.input as { message?: unknown; command?: unknown } | undefined
+  const text =
+    part.name === 'SendMessage'
+      ? String(input?.message ?? '')
+      : part.name === 'Bash' && /\bclaude\b[^\n]*--bg\b/.test(String(input?.command ?? ''))
+        ? String(input?.command ?? '')
+        : ''
+  const [, listed] = (part.name === 'SendMessage' ? text.match(TASK) : text.match(SENT)) ?? []
+  if (listed === undefined) return undefined
+  const pathOf: Record<string, string> = {}
+  for (const [, path = '', commit = ''] of text.matchAll(PATH)) pathOf[commit] = path
+  return { snapshots: listed.split(/, /), at, pathOf }
 }
 
 // Add what the complete lines of a review session's transcript tell to a tally:
@@ -189,17 +283,19 @@ function holds(task: Task, commit: string): boolean {
 // since a review session does its tasks in order,
 // once its tool result says the send went through,
 // as a send to a name no session has, such as the fixing session's old one, frees nothing.
-// A withdrawal drops the tasks all of whose snapshots it names, which then count as no round,
-// and leaves the snapshots of the newest task still pending, else of the newest freed,
-// as the review session handles no withdrawn one.
+// A withdrawal drops the tasks all of whose snapshots it names, which then count as no round.
 // A message to a subagent's ID is no result,
 // and the rules keep any other message from opening like one.
+// Every response adds its tokens, and one of the session's own,
+// not of a subagent whose lines it holds, tells how full its context window is.
 function tally(sum: Tally, lines: string[]): void {
   for (const line of lines) {
     // The time of the session's last line,
     // less one the engine queued for it, as a message on its way
     const [, stamp] = line.startsWith(QUEUED) ? [] : (line.match(TIMESTAMP) ?? [])
     if (stamp !== undefined) sum.lastWriteAt = Math.max(sum.lastWriteAt ?? 0, Date.parse(stamp) || 0)
+    const context = addSpend(sum.spend, line)
+    if (context !== undefined && !line.includes('"isSidechain":true')) sum.context = context
     for (const [, model, effort] of line.matchAll(MODEL_OR_EFFORT)) {
       if (model !== undefined) sum.model = model
       if (effort !== undefined) sum.effort = effort
@@ -247,7 +343,7 @@ function tally(sum: Tally, lines: string[]): void {
         // The round ran from when its clock started, as the pane shows it, to the result.
         sum.lastRoundMs = send.at - Math.max(sum.pending[0]?.at ?? send.at, sum.freedAt)
         sum.totalMs = (sum.totalMs ?? 0) + sum.lastRoundMs
-        sum.freedSnapshots = sum.pending[i]?.snapshots
+        sum.done = [...sum.done, ...sum.pending.slice(0, i + 1).flatMap(task => task.snapshots)].slice(-MAX_DONE)
         sum.pending.splice(0, i + 1)
         sum.freedAt = send.at
         // A finding is new when its number passes the highest that earlier results gave its letter.
@@ -280,15 +376,16 @@ function tally(sum: Tally, lines: string[]): void {
       const kept = sum.pending.filter(task => !isWithdrawn(task))
       // The task under way ends with its withdrawal, and the next one starts then, as on a result.
       if (sum.pending[0] !== undefined && isWithdrawn(sum.pending[0])) sum.freedAt = at
-      if (kept.length < sum.pending.length) sum.snapshots = kept.at(-1)?.snapshots ?? sum.freedSnapshots
       sum.rounds -= sum.pending.length - kept.length
       sum.pending = kept
       continue
     }
     const [, listed, skill] = text.match(TASK) ?? []
     if (listed === undefined) continue
-    for (const [, path = '', commit = ''] of text.matchAll(PATH)) sum.pathOf[commit] = path
     const snapshots = listed.split(/, /)
+    const pathOf: Record<string, string> = {}
+    for (const [, path = '', commit = ''] of text.matchAll(PATH)) pathOf[commit] = path
+    sum.lastTask = { snapshots, at, pathOf }
     const kind: Kind = skill === 'code-review' ? 'reviewing' : 'verifying'
     const isSame = (task: Task) =>
       task.kind === kind &&
@@ -296,22 +393,21 @@ function tally(sum: Tally, lines: string[]): void {
       snapshots.every(one => holds(task, one))
     if (sum.pending.some(isSame)) continue
     sum.startedAt ??= at
-    sum.snapshots = snapshots
     sum.pending.push({ snapshots, kind, at })
     sum.rounds += 1
   }
 }
 
 // Return the facts a tally tells, with its oldest task,
-// timed from when it arrived or the task before it ended, whichever is later.
-function factsOf({ pending, freedAt, freedSnapshots, sends, highest, lastWriteAt, pathOf, ...facts }: Tally): Facts {
+// timed from when it arrived or the task before it ended, whichever is later,
+// and the times and tokens of its responses and of those its subagents' lines told.
+function factsOf({ pending, freedAt, sends, highest, lastWriteAt, spend, ...facts }: Tally, subagents: Spend): Facts {
   const oldest = pending[0]
-  // A path named with a commit, either of the two maybe abbreviated
-  const named = Object.entries(pathOf)
-  const paths = facts.snapshots?.map(
-    one => named.find(([commit]) => commit.startsWith(one) || one.startsWith(commit))?.[1],
-  )
-  return { ...facts, paths, task: oldest && { kind: oldest.kind, since: Math.max(oldest.at, freedAt) } }
+  return {
+    ...facts,
+    spent: [...spentOf(spend), ...spentOf(subagents)],
+    task: oldest && { kind: oldest.kind, since: Math.max(oldest.at, freedAt) },
+  }
 }
 
 // Return a model ID the way Anthropic writes it, such as `Opus 5.5` for `claude-opus-5-5`,
@@ -326,18 +422,41 @@ function modelName(id: string): string {
   return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
-// Return ms as minutes and seconds, such as `21m 04s`, as seconds alone under a minute, as `18s`,
-// as hours and minutes from an hour on, as `4h 19m`,
-// and as days and hours from a day on, as `4d 03h`, so that it takes 7 columns to `99d 23h`.
+// Return ms in its highest whole unit, as `18s`, `12m`, `4h` or `5d`,
+// so that it takes 4 columns up to `999d`.
 function elapsed(ms: number): string {
   const seconds = Math.max(0, Math.floor(ms / 1000))
   const minutes = Math.floor(seconds / 60)
   const hours = Math.floor(minutes / 60)
   const days = Math.floor(hours / 24)
-  const two = (part: number) => String(part).padStart(2, '0')
-  if (days > 0) return `${days}d ${two(hours % 24)}h`
-  if (hours > 0) return `${hours}h ${two(minutes % 60)}m`
-  return minutes === 0 ? `${seconds}s` : `${minutes}m ${two(seconds % 60)}s`
+  return days > 0 ? `${days}d` : hours > 0 ? `${hours}h` : minutes > 0 ? `${minutes}m` : `${seconds}s`
+}
+
+// Return a count of tokens in 4 columns at most:
+// as it is under a thousand, as `987`,
+// else in thousands or millions, to one decimal under ten, as `1.2k` or `3.4M`,
+// and whole above, as `12k`.
+function tokensText(count: number): string {
+  for (const [unit, size] of [
+    ['', 1],
+    ['k', 1e3],
+    ['M', 1e6],
+    ['G', 1e9],
+  ] as const) {
+    const value = count / size
+    if (unit === '' && count < 1000) return String(Math.round(count))
+    if (unit === '') continue
+    if (value < 9.95) return `${value.toFixed(1)}${unit}`
+    if (value < 999.5 || unit === 'G') return `${Math.round(value)}${unit}`
+  }
+  return String(count)
+}
+
+// Return how full a context window is, in whole percent when its window is known, as `34%`,
+// else in tokens, as `143k`.
+function contextText(context: Context | undefined): string {
+  if (context === undefined) return ''
+  return context.percent !== undefined ? `${context.percent}%` : tokensText(context.tokens)
 }
 
 // Return when to tell next of a review session quiet since a given time, if it is due now,
@@ -784,47 +903,6 @@ export const register: Register = on => {
       startDirs.set(sessionId, root)
       return root
     }
-    // The first of the repositories that holds a snapshot, cached once found,
-    // per snapshot and list of repositories, as the worktrees of a repository share its snapshots,
-    // and as a list without the one found, as after a worktree is dropped, looks again
-    const repoOfSnapshot = new Map<string, string>()
-    const repoOf = async (snapshot: string, repos: string[]): Promise<string | undefined> => {
-      const key = [snapshot, ...repos].join('\0')
-      const known = repoOfSnapshot.get(key)
-      if (known !== undefined) return known
-      for (const repo of repos) {
-        if ((await run(['git', 'cat-file', '-e', `${snapshot}^{commit}`], { cwd: repo })) === undefined) continue
-        repoOfSnapshot.set(key, repo)
-        return repo
-      }
-      return undefined
-    }
-    // The directory of each of a task's snapshots, undefined when not known:
-    // the path the task named with it,
-    // as every worktree of a repository holds the others' snapshots,
-    // and once that is gone, as when its worktree was merged,
-    // the checkout line in the snapshot's place when that holds it, and none otherwise;
-    // else, when the task named no path, the work's directory for a single repository's,
-    // and otherwise the directory of the repository that holds it, as the header names it,
-    // trying first the checkout line in the snapshot's place,
-    // which follows the target's order as the snapshots do
-    const placesOf = (snapshots: string[], paths: (string | undefined)[], dir: string, repos: string[]) =>
-      Promise.all(
-        snapshots.map(async (snapshot, i) => {
-          const path = paths[i]
-          if (path !== undefined) {
-            if (await $.fs.stat(path).then(() => true, () => false)) return path
-            const line = repos[i]
-            return snapshots.length === repos.length && line !== undefined ? repoOf(snapshot, [line]) : undefined
-          }
-          return snapshots.length === 1
-            ? dir
-            : repoOf(
-                snapshot,
-                snapshots.length === repos.length ? [...new Set([...repos.slice(i, i + 1), ...repos])] : repos,
-              )
-        }),
-      )
     // Whether a snapshot taken now in a directory would hold another tree than a snapshot,
     // undefined when that is not known; currentOf gives the tree a snapshot taken now would hold
     const isDirty = async (
@@ -1056,29 +1134,26 @@ export const register: Register = on => {
       return agents
     }
 
-    // What each review session's transcript tells.
-    // Claude Code moves a session's transcript to the project folder of its new directory,
-    // as when it enters or leaves a worktree,
-    // so the list of its files is cached for a minute, or until one is gone,
-    // and not at all while there is none.
-    // Each file is read from the byte where the last read ended, the end of its last complete line.
-    // The facts are cached until a file changes,
-    // and while the session's status holds, for at least FACTS_MS,
-    // since a busy session writes to its transcript between most polls.
-    type Transcript = {
+    // Transcript files read on from where the last read ended,
+    // with the sum of what their lines told:
+    // the files, the oldest first, and when they were listed,
+    // how many bytes of each were read, up to the end of its last complete line,
+    // the end of that line, and each file's size then,
+    // their sizes and times as one stamp, and when they were read
+    type Followed<S> = {
       paths: string[]
       listedAt: number
-      // How many bytes of each file were read, up to the end of its last complete line,
-      // the end of that line, and the file's size then
       offsets: number[]
       ends: string[]
       sizes: number[]
       stamp: string
       readAt: number
-      sum: Tally
+      sum: S
     }
-    const transcripts = new Map<string, Transcript>()
-    const fresh = (paths: string[], now: number): Transcript => ({
+    // What lines tell: a sum that starts empty, a copy of one,
+    // and how complete lines of a file add to it
+    type Reader<S> = { init: () => S; copy: (sum: S) => S; add: (sum: S, lines: string[], file: string) => void }
+    const fresh = <S,>(paths: string[], now: number, reader: Reader<S>): Followed<S> => ({
       paths,
       listedAt: now,
       offsets: paths.map(() => 0),
@@ -1086,11 +1161,27 @@ export const register: Register = on => {
       sizes: paths.map(() => 0),
       stamp: '',
       readAt: 0,
-      sum: { pending: [], freedAt: 0, rounds: 0, sends: [], highest: {}, pathOf: {} },
+      sum: reader.init(),
     })
-    const describe = async (agent: Agent, now: number, hasStatusChanged: boolean): Promise<Facts> => {
-      const sessionId = agent.sessionId ?? ''
-      let cached = transcripts.get(sessionId)
+    // Read on in the files that a shell script lists, the oldest first, given a session ID.
+    // Claude Code moves a session's transcript to the project folder of its new directory,
+    // as when it enters or leaves a worktree,
+    // so the list is cached for a minute, or until a file is gone,
+    // and not at all while there is none when `isNoneOdd`, as for a session's own transcript;
+    // a list that only gains files, as a session's subagents' does,
+    // keeps what was read of the others.
+    // Each file is read from the byte where the last read ended, the end of its last complete line,
+    // unless throttled.
+    const follow = async <S,>(
+      cache: Map<string, Followed<S>>,
+      sessionId: string,
+      script: string,
+      isNoneOdd: boolean,
+      reader: Reader<S>,
+      now: number,
+      isThrottled: boolean,
+    ): Promise<Followed<S>> => {
+      let cached = cache.get(sessionId)
       const stat = async (paths: string[]) =>
         Promise.all(
           paths.map(path =>
@@ -1101,31 +1192,43 @@ export const register: Register = on => {
           ),
         )
       let stats = cached ? await stat(cached.paths) : []
-      if (!cached || cached.paths.length === 0 || now - cached.listedAt >= TRANSCRIPTS_MS || stats.includes(undefined)) {
-        // List a session's files the oldest first, in case it has more than one.
-        const listed = await run(['sh', '-c', 'ls -tr "$HOME"/.claude/projects/*/"$1".jsonl', 'sh', sessionId])
+      if (
+        !cached ||
+        (isNoneOdd && cached.paths.length === 0) ||
+        now - cached.listedAt >= TRANSCRIPTS_MS ||
+        stats.includes(undefined)
+      ) {
+        const listed = await run(['sh', '-c', script, 'sh', sessionId])
         const paths = listed?.split('\n').filter(Boolean) ?? []
-        if (!cached || (listed !== undefined && paths.join('\n') !== cached.paths.join('\n'))) cached = fresh(paths, now)
-        else cached = { ...cached, listedAt: now }
-        transcripts.set(sessionId, cached)
+        const from = cached
+        if (!from) cached = fresh(paths, now, reader)
+        else if (listed === undefined || paths.join('\n') === from.paths.join('\n')) cached = { ...from, listedAt: now }
+        else if (from.paths.every(path => paths.includes(path))) {
+          const was = (path: string) => from.paths.indexOf(path)
+          cached = {
+            ...from,
+            paths,
+            listedAt: now,
+            offsets: paths.map(path => from.offsets[was(path)] ?? 0),
+            ends: paths.map(path => from.ends[was(path)] ?? ''),
+            sizes: paths.map(path => from.sizes[was(path)] ?? 0),
+            stamp: '',
+          }
+        } else cached = fresh(paths, now, reader)
+        cache.set(sessionId, cached)
         stats = await stat(cached.paths)
       }
       const stamp = stats.map(one => one && `${one.size}:${one.mtimeMs}`).join(' ')
-      const isThrottled = !hasStatusChanged && now - cached.readAt < FACTS_MS
       if (cached.paths.length > 0 && stats.every(Boolean) && stamp !== cached.stamp && !isThrottled) {
+        const at = cached
         // Read what each file gained, from the end of the last line read, as cached,
         // so as to tell a file written anew, as when the engine cuts a message out of it,
         // where that end no longer comes right before the offset:
         // then read them all again from the start.
-        // Resolve undefined on a failure, to keep the cached facts and stamp,
+        // Resolve undefined on a failure, to keep the cached sum and stamp,
         // so that the next poll reads the files again.
-        const readOn = async (from: Transcript): Promise<Transcript | 'anew' | undefined> => {
-          const sum: Tally = {
-            ...from.sum,
-            pending: [...from.sum.pending],
-            sends: [...from.sum.sends],
-            pathOf: { ...from.sum.pathOf },
-          }
+        const readOn = async (from: Followed<S>): Promise<Followed<S> | 'anew' | undefined> => {
+          const sum = reader.copy(from.sum)
           const offsets = [...from.offsets]
           const ends = [...from.ends]
           for (const [i, path] of from.paths.entries()) {
@@ -1137,22 +1240,77 @@ export const register: Register = on => {
             const gained = text.slice(end.length)
             // The part after the last newline is a line still being written, or nothing.
             const complete = gained.slice(0, gained.lastIndexOf('\n') + 1)
-            tally(sum, complete.split('\n').slice(0, -1))
+            reader.add(sum, complete.split('\n').slice(0, -1), path)
             offsets[i] = offset + bytesOf(complete)
             ends[i] = endOf(end + complete)
           }
           return { ...from, offsets, ends, sizes: stats.map(one => one?.size ?? 0), stamp, readAt: now, sum }
         }
         // A file that shrank was written anew too.
-        const hasShrunk = stats.some((one, i) => (one?.size ?? 0) < (cached?.sizes[i] ?? 0))
-        let reading = await readOn(hasShrunk ? fresh(cached.paths, now) : cached)
-        if (reading === 'anew') reading = await readOn(fresh(cached.paths, now))
+        const hasShrunk = stats.some((one, i) => (one?.size ?? 0) < (at.sizes[i] ?? 0))
+        let reading = await readOn(hasShrunk ? fresh(at.paths, now, reader) : at)
+        if (reading === 'anew') reading = await readOn(fresh(at.paths, now, reader))
         if (reading !== undefined && reading !== 'anew') {
-          transcripts.set(sessionId, reading)
+          cache.set(sessionId, reading)
           cached = reading
         }
       }
-      const facts = factsOf(cached.sum)
+      return cached
+    }
+    // The scripts that list a session's transcript files and its subagents', the oldest first
+    const OWN = 'ls -tr "$HOME"/.claude/projects/*/"$1".jsonl'
+    const SUBAGENTS = 'ls -tr "$HOME"/.claude/projects/*/"$1"/subagents/*.jsonl 2>/dev/null; true'
+    const copySpend = (spend: Spend): Spend => ({ spent: [...spend.spent], reading: { ...spend.reading } })
+    const spendReader: Reader<Spend> = {
+      init: () => ({ spent: [], reading: {} }),
+      copy: copySpend,
+      add: (sum, lines, file) => {
+        for (const line of lines) addSpend(sum, line, file)
+      },
+    }
+
+    // What each review session's transcript tells, and the tokens its subagents' tell.
+    // The facts are cached until a file changes,
+    // and while the session's status holds, for at least FACTS_MS,
+    // since a busy session writes to its transcript between most polls.
+    const transcripts = new Map<string, Followed<Tally>>()
+    const subagentSpends = new Map<string, Followed<Spend>>()
+    const tallyReader: Reader<Tally> = {
+      init: () => ({
+        pending: [],
+        freedAt: 0,
+        rounds: 0,
+        sends: [],
+        highest: {},
+        done: [],
+        spend: { spent: [], reading: {} },
+      }),
+      copy: sum => ({ ...sum, pending: [...sum.pending], sends: [...sum.sends], spend: copySpend(sum.spend) }),
+      add: tally,
+    }
+    const describe = async (agent: Agent, now: number, hasStatusChanged: boolean): Promise<Facts> => {
+      const sessionId = agent.sessionId ?? ''
+      const isThrottled = (cached: { readAt: number } | undefined) =>
+        !hasStatusChanged && cached !== undefined && now - cached.readAt < FACTS_MS
+      const own = await follow(
+        transcripts,
+        sessionId,
+        OWN,
+        true,
+        tallyReader,
+        now,
+        isThrottled(transcripts.get(sessionId)),
+      )
+      const subagents = await follow(
+        subagentSpends,
+        sessionId,
+        SUBAGENTS,
+        false,
+        spendReader,
+        now,
+        isThrottled(subagentSpends.get(sessionId)),
+      )
+      const facts = factsOf(own.sum, subagents.sum)
       // A background session that has not run yet has only the flags its job was started with.
       if ((facts.model === undefined || facts.effort === undefined) && agent.id !== undefined) {
         try {
@@ -1165,7 +1323,61 @@ export const register: Register = on => {
           // A job with no state file has no flags to read.
         }
       }
-      return { ...facts, model: facts.model && modelName(facts.model) }
+      return { ...facts, modelId: facts.model, model: facts.model && modelName(facts.model) }
+    }
+
+    // What this session's own transcript tells, and the tokens its subagents' tell:
+    // the model and the effort it last ran with, the last task it sent,
+    // the tokens of its responses,
+    // and for each of its turns, when it ended and how long it took, two numbers in a row
+    type SelfTally = { spend: Spend; model?: string; effort?: string; lastTask?: Sent; turns: number[] }
+    const selfReader: Reader<SelfTally> = {
+      init: () => ({ spend: { spent: [], reading: {} }, turns: [] }),
+      copy: sum => ({ ...sum, spend: copySpend(sum.spend), turns: [...sum.turns] }),
+      add: (sum, lines) => {
+        for (const line of lines) {
+          addSpend(sum.spend, line)
+          // The line the engine writes as a turn ends, with how long the turn took
+          if (line.includes('"subtype":"turn_duration"')) {
+            const took = Number(line.match(/"durationMs":(\d+)/)?.[1] ?? Number.NaN)
+            const at = Date.parse(line.match(TIMESTAMP)?.[1] ?? '')
+            if (Number.isFinite(took) && Number.isFinite(at)) sum.turns.push(at, took)
+          }
+          for (const [, model, effort] of line.matchAll(MODEL_OR_EFFORT)) {
+            if (model !== undefined) sum.model = model
+            if (effort !== undefined) sum.effort = effort
+          }
+          if (!line.includes('"type":"assistant"') || !SENT.test(line)) continue
+          let entry
+          try {
+            entry = JSON.parse(line)
+          } catch {
+            continue
+          }
+          if (entry.isSidechain) continue
+          const at = Date.parse(entry.timestamp)
+          for (const part of partsOf(entry.message?.content)) sum.lastTask = sentBy(part, at) ?? sum.lastTask
+        }
+      },
+    }
+    const ownTranscripts = new Map<string, Followed<SelfTally>>()
+    const ownSubagentSpends = new Map<string, Followed<Spend>>()
+    const describeSelf = async (now: number): Promise<Omit<SelfTally, 'spend'> & { spent: number[] }> => {
+      const id = await $.session.id()
+      const isThrottled = (cached: { readAt: number } | undefined) =>
+        cached !== undefined && now - cached.readAt < FACTS_MS
+      const own = await follow(ownTranscripts, id, OWN, true, selfReader, now, isThrottled(ownTranscripts.get(id)))
+      const subagents = await follow(
+        ownSubagentSpends,
+        id,
+        SUBAGENTS,
+        false,
+        spendReader,
+        now,
+        isThrottled(ownSubagentSpends.get(id)),
+      )
+      const { spend, ...rest } = own.sum
+      return { ...rest, spent: [...spentOf(spend), ...spentOf(subagents.sum)] }
     }
 
     // When a review session or a subagent of its last wrote to a transcript,
@@ -1324,9 +1536,6 @@ export const register: Register = on => {
             // as when its reply ended asking the user something:
             // it has nothing to do until its next task, and the fixing session asks the user.
             const status = session.status === 'blocked' && facts.task === undefined ? 'idle' : session.status
-            const snapshots = facts.snapshots ?? []
-            const places = await placesOf(snapshots, facts.paths ?? [], dir, file.repos)
-            const dirty = await Promise.all(snapshots.map((snapshot, i) => isDirty(snapshot, places[i], currentOf)))
             // Busy, on its task or after its result, as on a background run it left behind,
             // or idle with its task out, as on a background run of its own or once ended
             const id = session.agent.sessionId ?? ''
@@ -1335,62 +1544,118 @@ export const register: Register = on => {
             const isWatched = status === 'busy' || (status === 'idle' && facts.task !== undefined)
             const floor = Math.max(awakeAt, seenSince.get(id)?.at ?? now)
             const quietSince = isWatched && !file.isPaused ? await quietSinceOf(id, now, floor) : undefined
-            return { ...session, status, facts, quietSince, places, dirty }
+            return { ...session, status, facts, quietSince }
           }),
         )
 
-        const reviewers = described.map(
-          ({ label, agent, status, facts, quietSince }): Reviewer => {
-            const { task, lastFound, paths, snapshots, ...about } = facts
-            return {
-              label,
-              status,
-              // On its task only while busy, and on its status alone otherwise,
-              // even with a task out, as while a background task of its own runs
-              ...(status === 'busy' && task && { task: task.kind, since: task.since }),
-              ...(quietSince !== undefined && { quietSince }),
-              findings: file.findings[label.slice(-1).toUpperCase()] ?? 0,
-              ...(lastFound !== undefined && { lastFound: lastFound[label.slice(-1).toUpperCase()] ?? 0 }),
-              ...about,
-              startedAt: about.startedAt ?? agent.startedAt,
-            }
-          },
-        )
-        // The snapshots of the review sessions' last tasks, each in its worktree once
-        const placed = new Map<string, { one: Snapshot; where?: string }>()
-        for (const { label, facts, places, dirty } of described) {
-          for (const [i, commit] of (facts.snapshots ?? []).entries()) {
-            const where = places[i]
-            // By the commit's shortest spelling, as tasks may spell one snapshot at two lengths
-            const key = `${where ?? ''}\0${commit.slice(0, 7)}`
-            const known = placed.get(key) ?? { one: { commit, labels: [], hasNewChanges: dirty[i] }, where }
-            known.one.labels.push(label)
-            placed.set(key, known)
+        // This session's own facts, and how full its context window is, as the engine reads it.
+        // A review session's window is this session's when it runs the same model.
+        const self = await describeSelf(now)
+        const { context: ownContext } = await $.session.usage()
+        const contextOf = (tokens: number, modelId: string | undefined): Context => ({
+          tokens,
+          ...(modelId !== undefined &&
+            modelId === self.model &&
+            ownContext.window > 0 && { percent: Math.round((100 * tokens) / ownContext.window) }),
+        })
+        const reviewers = described.map(({ label, agent, status, facts, quietSince }): Reviewer => {
+          const { task, lastFound, done, lastTask, spent, context, modelId, ...about } = facts
+          // The tokens of its round under way, from when its clock started, else of its last one
+          const round =
+            task !== undefined
+              ? tokensIn(spent, task.since)
+              : about.lastRoundAt !== undefined && about.lastRoundMs !== undefined
+                ? tokensIn(spent, about.lastRoundAt - about.lastRoundMs, about.lastRoundAt)
+                : undefined
+          return {
+            label,
+            status,
+            // On its task while busy, or idle with it out, as while its own background run does it,
+            // and on its status alone otherwise, even with a task out
+            ...((status === 'busy' || status === 'idle') && task && { task: task.kind, since: task.since }),
+            ...(quietSince !== undefined && { quietSince }),
+            findings: file.findings[label.slice(-1).toUpperCase()] ?? 0,
+            ...(lastFound !== undefined && { lastFound: lastFound[label.slice(-1).toUpperCase()] ?? 0 }),
+            ...about,
+            startedAt: about.startedAt ?? agent.startedAt,
+            tokens: tokensIn(spent),
+            ...(round !== undefined && { roundTokens: round }),
+            ...(context !== undefined && { context: contextOf(context, modelId) }),
           }
+        })
+        // This session as the developer, with the time its turns took and the tokens it spent
+        // since the review began, when its first review session got its first task, or started
+        const reviewStart = Math.min(...reviewers.map(one => one.startedAt ?? Infinity))
+        const developer: Developer = {
+          ...(self.model !== undefined && { model: modelName(self.model) }),
+          ...(self.effort !== undefined && { effort: self.effort }),
+          ...(Number.isFinite(reviewStart) && { startedAt: reviewStart }),
+          totalMs: self.turns.reduce(
+            (ms, took, i) => (i % 2 === 1 && (self.turns[i - 1] ?? 0) >= reviewStart ? ms + took : ms),
+            0,
+          ),
+          tokens: tokensIn(self.spent, reviewStart),
+          ...(ownContext.tokens !== undefined && {
+            context: {
+              tokens: ownContext.tokens,
+              ...(ownContext.percent !== undefined && { percent: Math.round(ownContext.percent) }),
+            },
+          }),
         }
-        // with their repos and branches, by repo, then by branch,
-        // those of no known repo last,
-        // as the sort keeps a worktree's snapshots in the order of the rows and of their tasks
-        const snapshots = (
-          await Promise.all(
-            [...placed.values()].map(
-              async ({ one, where }): Promise<Snapshot> => ({
-                ...(where !== undefined && (await worktreeAt(where))),
-                ...one,
+
+        // The review's repositories, each as a checkout line of the review file names it,
+        // with its snapshot in the last task this session sent,
+        // else in the newest task a review session got,
+        // as after this session went on under a new ID,
+        // whose transcript holds no task yet:
+        // the snapshot whose path is the line's directory,
+        // else the one in the line's place when the task names one per line.
+        // With no checkout line, each snapshot of that task is a row of its own.
+        const sent =
+          self.lastTask ??
+          described
+            .map(one => one.facts.lastTask)
+            .filter((one): one is Sent => one !== undefined)
+            .sort((a, b) => b.at - a.at)[0]
+        const named = Object.entries(sent?.pathOf ?? {})
+        const pathOf = (commit: string) =>
+          named.find(([one]) => one.startsWith(commit) || commit.startsWith(one))?.[1]
+        const rows: { line?: string; commit?: string }[] =
+          file.repos.length > 0
+            ? file.repos.map((line, i) => ({
+                line,
+                commit:
+                  named.find(([, path]) => path === line)?.[0] ??
+                  (sent?.snapshots.length === file.repos.length ? sent.snapshots[i] : undefined),
+              }))
+            : (sent?.snapshots ?? []).map(commit => ({
+                line: sent?.snapshots.length === 1 ? dir : undefined,
+                commit,
+              }))
+        const exists = (path: string | undefined) =>
+          path === undefined ? Promise.resolve(false) : $.fs.stat(path).then(() => true, () => false)
+        const snapshots = await Promise.all(
+          rows.map(async ({ line, commit }): Promise<Snapshot> => {
+            // Its worktree: the path the task named with it while that exists,
+            // else the line's directory
+            const path = commit === undefined ? undefined : pathOf(commit)
+            const where = (await exists(path)) ? path : (await exists(line)) ? line : undefined
+            return {
+              ...(where !== undefined && (await worktreeAt(where))),
+              ...(commit !== undefined && {
+                commit,
+                hasNewChanges: await isDirty(commit, where, currentOf),
               }),
-            ),
-          )
-        ).sort(
-          (a, b) =>
-            Number(a.repo === undefined) - Number(b.repo === undefined) ||
-            (a.repo ?? '').localeCompare(b.repo ?? '') ||
-            (a.branch ?? '').localeCompare(b.branch ?? ''),
+              labels: described
+                .filter(one => commit !== undefined && isSameCommit(one.facts.done, commit))
+                .map(one => one.label),
+            }
+          }),
         )
         // Writing the rows drops an error that an earlier poll noted.
         const isPaused = file.isPaused
-        if (JSON.stringify({ reviewers, snapshots, isPaused }) !== JSON.stringify(last)) {
-          await update($, board, () => ({ reviewers, snapshots, isPaused }))
-        }
+        const rowsNow = { reviewers, developer, snapshots, isPaused }
+        if (JSON.stringify(rowsNow) !== JSON.stringify(last)) await update($, board, () => rowsNow)
 
         // Tell this session of a review session quiet on its task, or busy after its result,
         // as the autoreview skill checks on it then,
@@ -1550,7 +1815,7 @@ export const register: Register = on => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text } = $.ui.resolve(e)
     const now = await $.clock.now()
-    const { reviewers, snapshots, error, isPaused } = await read($, board)
+    const { reviewers, developer, snapshots, error, isPaused } = await read($, board)
     // A window that has reset since the reading shows as 0 percent, until a new reading.
     const windows = (await read($, usage)).windows
       .filter(one => WINDOWS[one.kind] !== undefined)
@@ -1559,88 +1824,137 @@ export const register: Register = on => {
         const hasReset = one.resetsAt !== undefined && one.resetsAt <= now
         return `${WINDOWS[one.kind]} ${hasReset ? 0 : Math.round(one.percentUsed)}%`
       })
-    // The review sessions as three tables:
-    // the first gives each its state,
-    // with how long a busy one has run or a nudging one has been quiet, its model and effort,
-    // and when it started.
-    const [header, ...states] = linesOf(
+    // The tokens of the whole review: the developer's since it began, and the review sessions'
+    const total = [developer?.tokens, ...reviewers.map(one => one.tokens)].reduce<Tokens>(
+      (sum, one) => ({ input: sum.input + (one?.input ?? 0), output: sum.output + (one?.output ?? 0) }),
+      { input: 0, output: 0 },
+    )
+    const tokenCells = (tokens: Tokens | undefined) =>
+      tokens === undefined ? ['', ''] : [tokensText(tokens.input), tokensText(tokens.output)]
+    // A line under a table's header, as wide as its widest row
+    const ruleOf = (lines: string[]) => '─'.repeat(Math.max(0, ...lines.map(line => Array.from(line).length)))
+    // The sessions as two tables.
+    // The first gives each session as a whole, the developer, the fixing session, first:
+    // its model and effort, when it started, the findings that carry its letter,
+    // how long all its rounds took, each from when its clock started to its result,
+    // so with any time the session spent stuck or idle with its task out,
+    // the tokens it and its subagents used, input and output, and how full its context window is,
+    // and for the developer, the time its turns took and its tokens from when the review began.
+    const sessionLines = linesOf(
       [
-        ['rw', 'state', '', 'model', 'effort', 'started'],
+        ['name', 'model', 'effort', 'started', 'found', 'time', 'in', 'out', 'ctx'],
+        ...(developer === undefined
+          ? []
+          : [
+              [
+                'DEV',
+                developer.model ?? '',
+                developer.effort ?? '',
+                developer.startedAt !== undefined ? shortDateTime(developer.startedAt, now) : '',
+                '',
+                developer.totalMs !== undefined ? elapsed(developer.totalMs) : '',
+                ...tokenCells(developer.tokens),
+                contextText(developer.context),
+              ],
+            ]),
         ...reviewers.map(one => [
           one.label,
-          // A waiting one shows as blocked, as either waits on the user.
-          one.quietSince !== undefined
-            ? 'nudging'
-            : one.status === 'busy'
-              ? (one.task ?? 'busy')
-              : one.status === 'waiting'
-                ? 'blocked'
-                : one.status,
-          one.quietSince !== undefined
-            ? elapsed(now - one.quietSince)
-            : one.status === 'busy' && one.since !== undefined
-              ? elapsed(now - one.since)
-              : '',
           one.model ?? '',
           one.effort ?? '',
           one.startedAt !== undefined ? shortDateTime(one.startedAt, now) : '',
+          String(one.findings),
+          one.totalMs !== undefined ? elapsed(one.totalMs) : '',
+          ...tokenCells(one.tokens),
+          contextText(one.context),
         ]),
+        // The totals of the whole review, under the sessions:
+        // the findings, the time and the tokens, input and output,
+        // under `total` written across the four empty cells before them, as one cell
+        [
+          '',
+          '',
+          '',
+          '',
+          String(reviewers.reduce((sum, one) => sum + one.findings, 0)),
+          elapsed(reviewers.reduce((sum, one) => sum + (one.totalMs ?? 0), developer?.totalMs ?? 0)),
+          tokensText(total.input),
+          tokensText(total.output),
+          '',
+        ],
       ],
-      // The letter, a state such as verifying, a clock to 7 columns, as 59m 59s or 99d 23h,
-      // a model such as Sonnet 5.5, an effort such as medium, and a start such as 11-19 03:03
+      // The label, a model such as Sonnet 5.5, an effort such as medium,
+      // a start such as 11-19 03:03, the findings to 99999, a duration such as 12m,
+      // token counts such as 1.2M, and a share of the context window such as 34%, or its tokens
       [
         { width: 2 },
-        { width: 9 },
-        { isNumber: true, width: 7 },
         { width: 10 },
         { width: 6 },
         { width: 11 },
+        { isNumber: true, width: 5 },
+        { isNumber: true, width: 4 },
+        { isNumber: true, width: 4 },
+        { isNumber: true, width: 4 },
+        { isNumber: true, width: 4 },
       ],
     )
-    // A line under a table's header, as wide as its widest row
-    const ruleOf = (lines: string[]) => '─'.repeat(Math.max(0, ...lines.map(line => Array.from(line).length)))
-    // The second gives its round, the number of the last task it got,
-    // the findings that carry its letter and how many of them its last result gave new,
-    // when its last round finished, and how long all its rounds took and its last one,
-    // each from when its clock started to its result,
-    // so with any time the session spent stuck or idle with its task out.
-    // A pair shares a column, as `found / new`,
-    // the first of it set right under its name and the second left under its own,
-    // the counts to 99999 and 999 and the durations to 7 columns, as 59m 59s or 99d 23h.
-    const pairOf = (first: string, second: string, widths: [number, number], gap = '   ') =>
-      `${first.padStart(widths[0])}${gap}${second.padEnd(widths[1])}`
-    const rounds = linesOf(
+    // The second gives each its round under way, else its last:
+    // its number, the state it is in,
+    // with how long one on its task has run or a nudging one has been quiet,
+    // or when a finished one finished its last round,
+    // how long its last round took, how many new findings its last result gave, as found,
+    // and the tokens of its round.
+    const roundLines = linesOf(
       [
-        [
-          'rw',
-          'round',
-          pairOf('found', 'new', [5, 3], ' / '),
-          'finished',
-          pairOf('time', 'last', [7, 7], ' / '),
-        ],
+        ['rw', '#', 'state', 'time', 'last', 'found', 'in', 'out'],
         ...reviewers.map(one => [
           one.label,
           String(one.rounds),
-          pairOf(String(one.findings), one.lastFound !== undefined ? String(one.lastFound) : '', [5, 3]),
-          one.lastRoundAt !== undefined ? shortDateTime(one.lastRoundAt, now) : '',
-          pairOf(
-            one.totalMs !== undefined ? elapsed(one.totalMs) : '',
-            one.lastRoundMs !== undefined ? elapsed(one.lastRoundMs) : '',
-            [7, 7],
-          ),
+          // A waiting one shows as blocked, as either waits on the user,
+          // and an idle one with no task out as finished once it has finished a round.
+          one.quietSince !== undefined
+            ? 'nudging'
+            : (one.task ??
+              (one.status === 'busy'
+                ? 'busy'
+                : one.status === 'waiting'
+                  ? 'blocked'
+                  : one.status === 'idle' && one.lastRoundAt !== undefined
+                    ? 'finished'
+                    : one.status)),
+          one.quietSince !== undefined
+            ? elapsed(now - one.quietSince)
+            : one.since !== undefined
+              ? elapsed(now - one.since)
+              : one.status === 'idle' && one.lastRoundAt !== undefined
+                ? shortDateTime(one.lastRoundAt, now)
+                : '',
+          one.lastRoundMs !== undefined ? elapsed(one.lastRoundMs) : '',
+          one.lastFound !== undefined ? String(one.lastFound) : '',
+          ...tokenCells(one.roundTokens),
         ]),
       ],
-      // The letter, the round, the findings, a finish such as 11-19 03:03, and the durations
-      [{ width: 2 }, { isNumber: true, width: 5 }, { width: 11 }, { width: 11 }, { width: 17 }],
+      // The label, the round's number to 999, a state such as verifying,
+      // a duration such as 12m or a finish such as 11-19 03:03, a duration,
+      // the new findings to 99999, and token counts such as 1.2M
+      [
+        { width: 2 },
+        { isNumber: true, width: 3 },
+        { width: 9 },
+        { width: 11 },
+        { isNumber: true, width: 4 },
+        { isNumber: true, width: 5 },
+        { isNumber: true, width: 4 },
+        { isNumber: true, width: 4 },
+      ],
     )
-    // The third gives each snapshot of their last tasks:
+    // The third gives each repository of the review,
+    // as a checkout line of the review file names it:
     // its repo, by the name of the repository's main worktree's folder,
     // and the branch of its worktree, or the name of its folder when it is detached,
-    // or ? for each when it is in none of the review's repositories,
-    // or when the worktree its task named for it is gone and its checkout line does not hold it,
-    // the snapshot, the review sessions whose last task names it, by their labels,
-    // and whether they are behind, as the work there has changed since,
-    // or ? when that is not known.
+    // or ? for each when its worktree is gone,
+    // its snapshot in the last task the fixing session sent,
+    // the review sessions that have finished a task with that snapshot, by their labels,
+    // and whether the work there has changed since, or ? when that is not known.
     // Its cells are cut to keep its rows within the pane:
     // the labels to what leaves the repo and the branch the 4 and 6 characters of their headers,
     // the branch to the room left, and the repo too when the branch is down to 6 characters.
@@ -1661,45 +1975,59 @@ export const register: Register = on => {
         ...snapshots.map(one => [
           cut(one.repo ?? '?', repoWidth),
           cut(one.branch ?? '?', branchWidth),
-          one.commit.slice(0, 8),
+          one.commit?.slice(0, 8) ?? '?',
           cut(labelsOf(one.labels), rwWidth),
           one.hasNewChanges === undefined ? '?' : one.hasNewChanges ? 'yes' : 'no',
         ]),
       ],
       [{ width: 4 }, { width: 6 }, { width: 8 }, { width: rwWidth }, { width: 6 }],
     )
+    // A round's row is bold while busy, waiting or blocked, or on its task,
+    // yellow when nudging, red when failed, and gray otherwise, as is every other row.
+    const styleOf = (one: Reviewer | undefined) => {
+      const isWorking =
+        one?.status === 'busy' || one?.status === 'waiting' || one?.status === 'blocked' || one?.task !== undefined
+      const hasFailed = one?.status === 'failed'
+      const isQuiet = one?.quietSince !== undefined
+      return {
+        bold: isWorking || hasFailed || isQuiet,
+        dimColor: !isWorking && !hasFailed && !isQuiet,
+        color: hasFailed ? 'error' : isQuiet ? 'warning' : undefined,
+      } as const
+    }
+    const hasRows = reviewers.length > 0
+    // The header and the totals, and a row of a session's at least
+    const hasSessions = sessionLines.length > 2
 
     return (
       <Box flexDirection="column">
+        <Text bold>AUTOREVIEW COCKPIT</Text>
+        <Text> </Text>
         {windows.length > 0 && <Text>Usage: {windows.join(', ')}</Text>}
         {windows.length > 0 && <Text> </Text>}
-        <Text>REVIEWERS{isPaused ? ' (PAUSED)' : ''}</Text>
+        <Text>DEV AND REVIEWERS{isPaused ? ' (PAUSED)' : ''}</Text>
         <Text> </Text>
-        {reviewers.length === 0 && <Text dimColor>none</Text>}
-        {reviewers.length > 0 && <Text>{header}</Text>}
-        {reviewers.length > 0 && <Text dimColor>{ruleOf([header ?? '', ...states])}</Text>}
-        {reviewers.map((one, i) => {
-          // Bold while busy, waiting or blocked, yellow when nudging, red when failed, else gray
-          const isWorking = one.status === 'busy' || one.status === 'waiting' || one.status === 'blocked'
-          const hasFailed = one.status === 'failed'
-          const isQuiet = one.quietSince !== undefined
-          return (
-            <Text
-              bold={isWorking || hasFailed || isQuiet}
-              dimColor={!isWorking && !hasFailed && !isQuiet}
-              color={hasFailed ? 'error' : isQuiet ? 'warning' : undefined}
-            >
-              {states[i]}
-            </Text>
-          )
-        })}
-        {reviewers.length > 0 && <Text> </Text>}
-        {reviewers.length > 0 && <Text> </Text>}
-        {reviewers.length > 0 && <Text>ROUNDS</Text>}
-        {reviewers.length > 0 && <Text> </Text>}
-        {reviewers.length > 0 && <Text>{rounds[0]}</Text>}
-        {reviewers.length > 0 && <Text dimColor>{ruleOf(rounds)}</Text>}
-        {reviewers.length > 0 && rounds.slice(1).map(line => <Text dimColor>{line}</Text>)}
+        {!hasSessions && <Text dimColor>none</Text>}
+        {hasSessions && <Text>{sessionLines[0]}</Text>}
+        {hasSessions && <Text dimColor>{ruleOf(sessionLines)}</Text>}
+        {hasSessions && sessionLines.slice(1, -1).map(line => <Text dimColor>{line}</Text>)}
+        {hasSessions && <Text dimColor>{ruleOf(sessionLines)}</Text>}
+        {hasSessions && <Text>{sessionLines.at(-1)?.replace(/^ {5}/, 'total')}</Text>}
+        {hasRows && <Text> </Text>}
+        {hasRows && <Text> </Text>}
+        {hasRows && <Text>ROUNDS</Text>}
+        {hasRows && <Text> </Text>}
+        {hasRows && <Text>{roundLines[0]}</Text>}
+        {hasRows && <Text dimColor>{ruleOf(roundLines)}</Text>}
+        {hasRows &&
+          roundLines.slice(1).map((line, i) => {
+            const style = styleOf(reviewers[i])
+            return (
+              <Text bold={style.bold} dimColor={style.dimColor} color={style.color}>
+                {line}
+              </Text>
+            )
+          })}
         {snapshots.length > 0 && <Text> </Text>}
         {snapshots.length > 0 && <Text> </Text>}
         {snapshots.length > 0 && <Text>REVIEW SNAPSHOTS</Text>}

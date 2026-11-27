@@ -460,9 +460,11 @@ and before the `Unanswered questions` line when there is one:
 ````
 
 The `reviewers` plugin in this skill's folder, the folder of a Claude Code plugin as well,
-shows the plan's usage and the review sessions in a pane, with their states,
+shows the plan's usage, the review sessions and this session in a pane, the Autoreview Cockpit:
+their states,
 as nudging once one busy, or idle with its task out, has written to no transcript for ten minutes,
-unless the user has the review paused, and whether they have seen the latest work.
+unless the user has the review paused, their rounds, tokens and context windows,
+and each repository's snapshot in the last task sent, with the review sessions that checked it.
 The pane opens by itself in a wide enough terminal, and `/reviewers` opens it at any width.
 
 Claude Code loads the plugin only as a session starts,

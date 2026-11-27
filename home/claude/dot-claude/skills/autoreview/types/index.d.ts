@@ -6,9 +6,10 @@ export type Reviewer = {
   // failed as its job ended on an error, and idle otherwise,
   // as when its session has ended, or when it asked the user something with no task out
   status: 'busy' | 'waiting' | 'blocked' | 'failed' | 'idle'
-  // The task whose result it has not sent yet, unless withdrawn, while it is busy on it:
+  // The task whose result it has not sent yet, unless withdrawn,
+  // while it is busy on it, or idle with it out, as while its own background run does it:
   // a first review, or a check of what was updated since, fixes and other changes alike.
-  // A row that is not busy leaves it out.
+  // A row neither busy nor idle leaves it out.
   task?: 'reviewing' | 'verifying'
   // When it started on that task, in milliseconds since the epoch
   since?: number
@@ -37,6 +38,33 @@ export type Reviewer = {
   lastRoundMs?: number
   // How long all its rounds took, in milliseconds, the sum of each one's as the last one's is taken
   totalMs?: number
+  // The tokens it and its subagents used, all told,
+  // and in its round under way, else in its last one, from when its clock started to its result
+  tokens?: Tokens
+  roundTokens?: Tokens
+  // How full its context window is, as its last response reported it
+  context?: Context
+}
+
+// Tokens a session used: input, cache writes included, which leaves out cache reads, and output
+export type Tokens = { input: number; output: number }
+
+// How full a session's context window is: the input tokens its last response was answered over,
+// and their share of the window in whole percent, when the window is known
+export type Context = { tokens: number; percent?: number }
+
+// The fixing session, which the pane calls the developer:
+// the model and the effort it last ran with,
+// when the review began, in milliseconds since the epoch,
+// how long its turns that ended since then took, in milliseconds,
+// the tokens it and its subagents used since then, and how full its context window is
+export type Developer = {
+  model?: string
+  effort?: string
+  startedAt?: number
+  totalMs?: number
+  tokens?: Tokens
+  context?: Context
 }
 
 // A reading of the plan's usage, as a session's last response reported it:
@@ -47,17 +75,18 @@ export type Usage = {
   windows: { kind: string; percentUsed: number; resetsAt?: number }[]
 }
 
-// A snapshot that the last task of a review session names, in a repository of its review
+// A repository of the review, as a checkout line of the review file names it,
+// with its snapshot in the last task the fixing session sent
 export type Snapshot = {
   // The repository, by the name of its main worktree's folder,
   // and the branch checked out in the snapshot's worktree,
   // or the name of the worktree's folder when it is detached;
-  // both absent when the snapshot is in none of the review's repositories,
-  // or when the worktree its task named for it is gone and its checkout line does not hold it
+  // both absent when that worktree is gone
   repo?: string
   branch?: string
-  commit: string
-  // The labels of the review sessions whose last task names it
+  // Absent when that task names no snapshot of the repository, or no such task is known
+  commit?: string
+  // The labels of the review sessions that have finished a task with that snapshot
   labels: string[]
   // Whether a snapshot taken now in its worktree would hold another tree;
   // absent when it is not known
@@ -66,6 +95,7 @@ export type Snapshot = {
 
 export type Board = {
   reviewers: Reviewer[]
+  developer?: Developer
   snapshots: Snapshot[]
   // Whether the review file says the user has the review paused
   isPaused?: boolean
