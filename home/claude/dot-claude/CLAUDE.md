@@ -28,6 +28,8 @@
   a rule about one project in the nearest such file at or above it, any other here,
   without work details, since this file is public.
 - Make an obvious fix to your own work and report it, rather than proposing it and waiting.
+- Once you change a skill or rule that you follow,
+  apply the change to the work you are doing under it, such as a review you run.
 - Make a change the user suggests once you agree with it, rather than asking whether to,
   except while you review,
   where it goes into a finding or a comment unless the user asks for the change.
