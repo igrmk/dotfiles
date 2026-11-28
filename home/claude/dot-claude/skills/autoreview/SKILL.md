@@ -35,10 +35,12 @@ and send no task until the user resumes the review, which an `add` does first;
 then send every review session one task at a new snapshot:
 its withdrawn task with what changed meanwhile added to its report,
 or for one that had none out, a report of what changed meanwhile, when anything did.
-When nothing changed since a withdrawn task whose run the review session stopped in the background,
-as a `/code-review` runs as `@code-review`, its review session goes on where it stopped:
-below the task's opening line, tell it to send that run a message to go on,
-rather than starting it again.
+A withdrawn task whose run the review session stopped in the background,
+as a `/code-review` runs as `@code-review`, goes on where it stopped instead, at its own snapshot:
+send it again, telling the review session below its opening line
+to send that run a message to go on rather than starting it again,
+saying that the subagents it started stopped with it, so that it sends each of them one too,
+and send what changed meanwhile after it, as a report, per "When the work changes otherwise".
 
 Each review session works in a worktree of its own,
 `<main worktree>/.claude/worktrees/<name>-rw-<letter>`,
