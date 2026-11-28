@@ -45,8 +45,8 @@ const WITHDRAWAL = new RegExp(`(?:^|<cross-session-message[^>]*>\\s*)${withdrawa
 // the snapshots and the skill it runs
 const SENT = new RegExp(`${opening(`(${COMMITS})`)}(code-review|check-fixes)`)
 // A line of a task below its opening that names a repository's path and its snapshot,
-// maybe as a list item
-const PATH = new RegExp(`^(?:- )?(/[^\\n:]*): (${COMMIT})$`, 'gm')
+// maybe as a list item, or as the last line of a command's quoted prompt
+const PATH = new RegExp(`^(?:- )?(/[^\\n:]*): (${COMMIT})(?:'\\s*\\)?)?$`, 'gm')
 // The transcript lines that may hold a task, a withdrawal or a result
 const TASK_OR_RESULT = new RegExp(`${opening(COMMITS)}|${withdrawal(COMMITS)}|"name":"SendMessage"`)
 // A line's time, and the opening of a line the engine writes as it queues a message for the session
@@ -162,10 +162,8 @@ type Facts = Pick<
 type Sent = { snapshots: string[]; at: number; pathOf: Record<string, string> }
 // The tokens of a transcript's responses read so far:
 // for each response done, its time, its input tokens, cache writes included, and its output tokens,
-// three numbers in a row,
-// and in each file, the response whose lines are being read,
-// with its input tokens, cache reads included, as well,
-// as two subagents write their files at once
+// three numbers in a row, and in each file, the response whose lines are being read,
+// with its input tokens, cache reads included, as well, as two subagents write their files at once
 type Spend = {
   spent: number[]
   reading: Record<string, { id: string; at: number; input: number; output: number; context: number }>
@@ -450,7 +448,7 @@ function elapsed(ms: number): string {
 // and whole above, as `12k`.
 function tokensText(count: number): string {
   for (const [unit, size] of [
-    ['', 1],
+    ['',  1],
     ['k', 1e3],
     ['M', 1e6],
     ['G', 1e9],
@@ -596,6 +594,11 @@ function bytesOf(text: string): number {
   return new TextEncoder().encode(text).length
 }
 
+// Return a share a header line gives, 0 included, or undefined when it gives none.
+function shareOf(share: string | undefined): number | undefined {
+  return share === undefined ? undefined : Number(share)
+}
+
 // Return the end of a text that ends a line, up to 200 characters,
 // enough to tell that line from the others of a transcript, where each holds IDs and a time.
 function endOf(text: string): string {
@@ -617,7 +620,7 @@ export const register: Register = on => {
 
     await $.command.register({
       name: 'reviewers',
-      description: "Show the plan's usage and the review sessions of this session in a pane",
+      description: 'Show the Autoreview Cockpit: the plan\'s usage, this session and its review sessions',
     })
 
     // A pane keeps the width it was opened with until it is opened again, which sets it anew,
@@ -806,7 +809,8 @@ export const register: Register = on => {
 
     // What the review files tell, each cached until its size or time changes, with its path:
     // the sessions their headers name, the count of their findings by letter,
-    // whether the review is paused, the share of the weekly usage at which it pauses,
+    // whether the review is paused, by the user or at the 5-hour limit,
+    // the shares of the weekly and 5-hour usage at which it pauses,
     // and the directories of the reviewed repositories
     type Parsed = {
       path: string
@@ -1050,11 +1054,11 @@ export const register: Register = on => {
             ids: [...header.matchAll(RESUME)].map(([, one = '']) => one),
             attached: [...header.matchAll(ATTACH)].map(([, name = '', sessionId]) => ({ name, sessionId })),
             findings,
-            // As the autoreview skill writes it while the user has the review paused
+            // As the autoreview skill writes it while the review is paused
             isPaused: PAUSED.test(header),
             isPausedAtFiveHours: PAUSED_AT_FIVE_HOURS.test(header),
-            weekLimit: Number(WEEK_LIMIT.exec(header)?.[1] ?? Number.NaN) || undefined,
-            fiveHourLimit: Number(FIVE_HOUR_LIMIT.exec(header)?.[1] ?? Number.NaN) || undefined,
+            weekLimit: shareOf(WEEK_LIMIT.exec(header)?.[1]),
+            fiveHourLimit: shareOf(FIVE_HOUR_LIMIT.exec(header)?.[1]),
             repos: [...header.matchAll(CHECKOUT)].map(([, dir = '']) => dir),
           }
           files.set(path, file)
@@ -1192,7 +1196,8 @@ export const register: Register = on => {
     // a list that only gains files, as a session's subagents' does,
     // keeps what was read of the others.
     // Each file is read from the byte where the last read ended, the end of its last complete line,
-    // unless throttled.
+    // unless the entry it holds after listing is throttled,
+    // as a new entry, as when a file moved, never is.
     const follow = async <S,>(
       cache: Map<string, Followed<S>>,
       sessionId: string,
@@ -1200,7 +1205,7 @@ export const register: Register = on => {
       isNoneOdd: boolean,
       reader: Reader<S>,
       now: number,
-      isThrottled: boolean,
+      isThrottled: (entry: Followed<S>) => boolean,
     ): Promise<Followed<S>> => {
       let cached = cache.get(sessionId)
       const stat = async (paths: string[]) =>
@@ -1240,7 +1245,7 @@ export const register: Register = on => {
         stats = await stat(cached.paths)
       }
       const stamp = stats.map(one => one && `${one.size}:${one.mtimeMs}`).join(' ')
-      if (cached.paths.length > 0 && stats.every(Boolean) && stamp !== cached.stamp && !isThrottled) {
+      if (cached.paths.length > 0 && stats.every(Boolean) && stamp !== cached.stamp && !isThrottled(cached)) {
         const at = cached
         // Read what each file gained, from the end of the last line read, as cached,
         // so as to tell a file written anew, as when the engine cuts a message out of it,
@@ -1253,6 +1258,8 @@ export const register: Register = on => {
           const offsets = [...from.offsets]
           const ends = [...from.ends]
           for (const [i, path] of from.paths.entries()) {
+            // A file of the same size as at the last read gained nothing.
+            if (from.readAt > 0 && stats[i]?.size === from.sizes[i]) continue
             const offset = offsets[i] ?? 0
             const end = ends[i] ?? ''
             const text = await output(['tail', '-c', `+${offset - bytesOf(end) + 1}`, path])
@@ -1311,26 +1318,9 @@ export const register: Register = on => {
     }
     const describe = async (agent: Agent, now: number, hasStatusChanged: boolean): Promise<Facts> => {
       const sessionId = agent.sessionId ?? ''
-      const isThrottled = (cached: { readAt: number } | undefined) =>
-        !hasStatusChanged && cached !== undefined && now - cached.readAt < FACTS_MS
-      const own = await follow(
-        transcripts,
-        sessionId,
-        OWN,
-        true,
-        tallyReader,
-        now,
-        isThrottled(transcripts.get(sessionId)),
-      )
-      const subagents = await follow(
-        subagentSpends,
-        sessionId,
-        SUBAGENTS,
-        false,
-        spendReader,
-        now,
-        isThrottled(subagentSpends.get(sessionId)),
-      )
+      const isThrottled = (entry: { readAt: number }) => !hasStatusChanged && now - entry.readAt < FACTS_MS
+      const own = await follow(transcripts, sessionId, OWN, true, tallyReader, now, isThrottled)
+      const subagents = await follow(subagentSpends, sessionId, SUBAGENTS, false, spendReader, now, isThrottled)
       const facts = factsOf(own.sum, subagents.sum)
       // A background session that has not run yet has only the flags its job was started with.
       if ((facts.model === undefined || facts.effort === undefined) && agent.id !== undefined) {
@@ -1383,22 +1373,66 @@ export const register: Register = on => {
     }
     const ownTranscripts = new Map<string, Followed<SelfTally>>()
     const ownSubagentSpends = new Map<string, Followed<Spend>>()
-    const describeSelf = async (now: number): Promise<Omit<SelfTally, 'spend'> & { spent: number[] }> => {
+    // The sessions this conversation ran as, the first first:
+    // from the first one found before, kept in the store by the review file,
+    // or else one the review file's resume line names, through each it went on in, to this one.
+    // The first is kept, as the resume line names only the latest once the session rewrites it,
+    // and no transcript names the session it went on from.
+    const chainOf = async (file: Parsed, now: number): Promise<string[]> => {
       const id = await $.session.id()
-      const isThrottled = (cached: { readAt: number } | undefined) =>
-        cached !== undefined && now - cached.readAt < FACTS_MS
-      const own = await follow(ownTranscripts, id, OWN, true, selfReader, now, isThrottled(ownTranscripts.get(id)))
-      const subagents = await follow(
-        ownSubagentSpends,
-        id,
-        SUBAGENTS,
-        false,
-        spendReader,
-        now,
-        isThrottled(ownSubagentSpends.get(id)),
-      )
-      const { spend, ...rest } = own.sum
-      return { ...rest, spent: [...spentOf(spend), ...spentOf(subagents.sum)] }
+      const firstKey = `firstSession:${file.path}`
+      const kept = await $.store.get(firstKey).catch(() => undefined)
+      for (const one of [...(typeof kept === 'string' ? [kept] : []), ...file.ids]) {
+        const chain: string[] = []
+        let at: string | undefined = one
+        for (let step = 0; at !== undefined && at !== id && step <= MAX_SUCCESSORS; step += 1) {
+          chain.push(at)
+          at = await successorOf(at, now)
+        }
+        if (at !== id) continue
+        if (chain[0] !== undefined && chain[0] !== kept) await $.store.set(firstKey, chain[0]).catch(() => undefined)
+        return [...chain, id]
+      }
+      return [id]
+    }
+    // What the sessions this conversation ran as tell, each read as this session's own is:
+    // a session that went on in another stops changing, so it is read once and then only stat'ed.
+    // A session repeats the responses and turns of the one before it with their times,
+    // all before its first new one, so each counts only past the last of the one before.
+    const describeSelf = async (
+      now: number,
+      chain: string[],
+    ): Promise<Omit<SelfTally, 'spend'> & { spent: number[] }> => {
+      const isThrottled = (entry: { readAt: number }) => now - entry.readAt < FACTS_MS
+      const spent: number[] = []
+      const turns: number[] = []
+      let told: Omit<SelfTally, 'spend' | 'turns'> = {}
+      let until = -Infinity
+      for (const id of chain) {
+        const own = await follow(ownTranscripts, id, OWN, true, selfReader, now, isThrottled)
+        const subagents = await follow(ownSubagentSpends, id, SUBAGENTS, false, spendReader, now, isThrottled)
+        const { spend, turns: itsTurns, ...rest } = own.sum
+        const itsSpent = [...spentOf(spend), ...spentOf(subagents.sum)]
+        let last = until
+        for (let i = 0; i + 2 < itsSpent.length; i += 3) {
+          const at = itsSpent[i] ?? 0
+          last = Math.max(last, at)
+          if (at > until) spent.push(at, itsSpent[i + 1] ?? 0, itsSpent[i + 2] ?? 0)
+        }
+        for (let i = 0; i + 1 < itsTurns.length; i += 2) {
+          const at = itsTurns[i] ?? 0
+          last = Math.max(last, at)
+          if (at > until) turns.push(at, itsTurns[i + 1] ?? 0)
+        }
+        told = {
+          model: rest.model ?? told.model,
+          effort: rest.effort ?? told.effort,
+          lastTask:
+            (rest.lastTask?.at ?? -Infinity) >= (told.lastTask?.at ?? -Infinity) ? rest.lastTask : told.lastTask,
+        }
+        until = last
+      }
+      return { ...told, turns, spent }
     }
 
     // When a review session or a subagent of its last wrote to a transcript,
@@ -1508,6 +1542,70 @@ export const register: Register = on => {
 
         if (work === '') work = await workDirBefore(file, now)
 
+        // Check the usage limits as soon as the review file is found,
+        // so that a listing of the sessions that fails, or a row that fails to build, stops none.
+        // Tell this session once a window of the plan's usage reaches its share in the review file,
+        // as the autoreview skill pauses the review then:
+        // once per window, its reset and its share,
+        // kept in the store by the review file for a reload,
+        // and for the session the conversation goes on in under a new ID,
+        // so that a resume the user asks for holds
+        // until the window starts anew or the share changes.
+        // While the user has the review paused,
+        // keep the window's notice as told without telling it,
+        // so that the user's resume holds alike;
+        // while it is paused at the 5-hour limit, tell the weekly limit all the same,
+        // as that pause lifts by itself and the weekly one waits for the user.
+        // Once the 5-hour window whose limit paused the review starts anew,
+        // tell this session once to resume it, as the skill does while that pause stands,
+        // whatever limit the file gives by then.
+        // A notice that does not enter goes again RETRY_MS later.
+        // A window's reset is kept by the hour, as readings may give it to the millisecond apart.
+        const hourOf = (window: Usage['windows'][number]) =>
+          window.resetsAt === undefined ? '' : String(Math.round(window.resetsAt / 3600000))
+        const tell = (kind: string, text: string, storeKey: string, key: string) => {
+          limitTelling.add(kind)
+          void $.prompt
+            .submit({ text })
+            .then(async ran => {
+              if (ran.drop === undefined) await $.store.set(storeKey, key).catch(() => undefined)
+              else limitRetryAt.set(kind, now + RETRY_MS)
+            })
+            .catch(error => $.ui.log(`reviewers: ${String(error)}`, { to: 'debug' }))
+            .finally(() => limitTelling.delete(kind))
+        }
+        for (const { kind, limit, name } of [
+          { kind: 'five_hour', limit: file.fiveHourLimit, name: '5-hour' },
+          { kind: 'seven_day', limit: file.weekLimit, name: 'weekly' },
+        ]) {
+          const window = windows.find(one => one.kind === kind)
+          if (window === undefined || limitTelling.has(kind) || now < (limitRetryAt.get(kind) ?? 0)) continue
+          const hasReset = window.resetsAt !== undefined && window.resetsAt <= now
+          const toldKey = `${kind}LimitTold:${file.path}`
+          if (kind === 'five_hour' && file.isPausedAtFiveHours) {
+            const told = await $.store.get(toldKey).catch(() => undefined)
+            const resumeKey = `${kind}ResumeTold:${file.path}`
+            if (typeof told !== 'string' || (!hasReset && hourOf(window) === told.split(':')[1])) continue
+            if ((await $.store.get(resumeKey).catch(() => undefined)) === told) continue
+            const text =
+              'The 5-hour window whose limit paused the review has started anew: ' +
+              'resume the review, per the autoreview skill.'
+            tell(kind, text, resumeKey, told)
+            continue
+          }
+          if (limit === undefined || hasReset || window.percentUsed < limit) continue
+          const key = `${limit}:${hourOf(window)}`
+          if ((await $.store.get(toldKey).catch(() => undefined)) === key) continue
+          if (file.isPaused && !file.isPausedAtFiveHours) {
+            await $.store.set(toldKey, key).catch(() => undefined)
+            continue
+          }
+          const text =
+            `The plan's ${name} usage is at ${Math.round(window.percentUsed)}%, ` +
+            `at the review's ${name} limit of ${limit}%: pause the review, per the autoreview skill.`
+          tell(kind, text, toldKey, key)
+        }
+
         // Keep the rows as they were when the sessions cannot be listed, and say so.
         const agents = await listAgents(now)
         if (agents === undefined) {
@@ -1575,7 +1673,7 @@ export const register: Register = on => {
 
         // This session's own facts, and how full its context window is, as the engine reads it.
         // A review session's window is this session's when it runs the same model.
-        const self = await describeSelf(now)
+        const self = await describeSelf(now, await chainOf(file, now))
         const { context: ownContext } = await $.session.usage()
         const contextOf = (tokens: number, modelId: string | undefined): Context => ({
           tokens,
@@ -1599,7 +1697,7 @@ export const register: Register = on => {
             // and on its status alone otherwise, even with a task out
             ...((status === 'busy' || status === 'idle') && task && { task: task.kind, since: task.since }),
             ...(quietSince !== undefined && { quietSince }),
-            // Paused while the user has the review paused and the pause took its task
+            // Paused while the review is paused and the pause took its task
             ...(file.isPaused && status === 'idle' && !task && withdrawnAt !== undefined && { pausedAt: withdrawnAt }),
             findings: file.findings[label.slice(-1).toUpperCase()] ?? 0,
             ...(lastFound !== undefined && { lastFound: lastFound[label.slice(-1).toUpperCase()] ?? 0 }),
@@ -1631,19 +1729,18 @@ export const register: Register = on => {
         }
 
         // The review's repositories, each as a checkout line of the review file names it,
-        // with its snapshot in the last task this session sent,
-        // else in the newest task a review session got,
-        // as after this session went on under a new ID,
-        // whose transcript holds no task yet:
+        // with its snapshot in the newest task:
+        // the last one this session's transcript shows it sending,
+        // or the newest a review session got,
+        // as a launch or a resume may pass its prompt from a file,
+        // which that transcript does not show,
+        // and this session may have gone on under a new ID, whose transcript holds no task yet:
         // the snapshot whose path is the line's directory,
         // else the one in the line's place when the task names one per line.
         // With no checkout line, each snapshot of that task is a row of its own.
-        const sent =
-          self.lastTask ??
-          described
-            .map(one => one.facts.lastTask)
-            .filter((one): one is Sent => one !== undefined)
-            .sort((a, b) => b.at - a.at)[0]
+        const sent = [self.lastTask, ...described.map(one => one.facts.lastTask)]
+          .filter((one): one is Sent => one !== undefined)
+          .sort((a, b) => b.at - a.at)[0]
         const named = Object.entries(sent?.pathOf ?? {})
         const pathOf = (commit: string) =>
           named.find(([one]) => one.startsWith(commit) || commit.startsWith(one))?.[1]
@@ -1687,59 +1784,6 @@ export const register: Register = on => {
         const { isPaused, weekLimit, fiveHourLimit } = file
         const rowsNow = { reviewers, developer, snapshots, isPaused, weekLimit, fiveHourLimit }
         if (JSON.stringify(rowsNow) !== JSON.stringify(last)) await update($, board, () => rowsNow)
-
-        // Tell this session once a window of the plan's usage
-        // reaches the share the review file gives it,
-        // as the autoreview skill pauses the review then, unless it is paused already:
-        // once per window, its reset and its share,
-        // kept in the store by the review file for a reload,
-        // and for the session the conversation goes on in under a new ID,
-        // so that a resume the user asks for holds
-        // until the window starts anew or the share changes.
-        // Once the 5-hour window whose limit paused the review starts anew,
-        // tell this session once to resume it, as the skill does while that pause stands.
-        // A notice that does not enter goes again RETRY_MS later.
-        // A window's reset is kept by the hour, as readings may give it to the millisecond apart.
-        const hourOf = (window: Usage['windows'][number]) =>
-          window.resetsAt === undefined ? '' : String(Math.round(window.resetsAt / 3600000))
-        const tell = (kind: string, text: string, storeKey: string, key: string) => {
-          limitTelling.add(kind)
-          void $.prompt
-            .submit({ text })
-            .then(async ran => {
-              if (ran.drop === undefined) await $.store.set(storeKey, key).catch(() => undefined)
-              else limitRetryAt.set(kind, now + RETRY_MS)
-            })
-            .catch(error => $.ui.log(`reviewers: ${String(error)}`, { to: 'debug' }))
-            .finally(() => limitTelling.delete(kind))
-        }
-        for (const { kind, limit, name } of [
-          { kind: 'five_hour', limit: fiveHourLimit, name: '5-hour' },
-          { kind: 'seven_day', limit: weekLimit, name: 'weekly' },
-        ]) {
-          const window = windows.find(one => one.kind === kind)
-          if (limit === undefined || window === undefined || limitTelling.has(kind)) continue
-          if (now < (limitRetryAt.get(kind) ?? 0)) continue
-          const hasReset = window.resetsAt !== undefined && window.resetsAt <= now
-          const toldKey = `${kind}LimitTold:${file.path}`
-          const told = await $.store.get(toldKey).catch(() => undefined)
-          if (!hasReset && !isPaused && window.percentUsed >= limit) {
-            const key = `${limit}:${hourOf(window)}`
-            if (told === key) continue
-            const text =
-              `The plan's ${name} usage is at ${Math.round(window.percentUsed)}%, ` +
-              `at the review's ${name} limit of ${limit}%: pause the review, per the autoreview skill.`
-            tell(kind, text, toldKey, key)
-          } else if (kind === 'five_hour' && file.isPausedAtFiveHours && typeof told === 'string') {
-            const resumeKey = `${kind}ResumeTold:${file.path}`
-            const hasStartedAnew = hasReset || hourOf(window) !== told.split(':')[1]
-            if (!hasStartedAnew || (await $.store.get(resumeKey).catch(() => undefined)) === told) continue
-            const text =
-              'The 5-hour window whose limit paused the review has started anew: ' +
-              'resume the review, per the autoreview skill.'
-            tell(kind, text, resumeKey, told)
-          }
-        }
 
         // Tell this session of a review session quiet on its task, or busy after its result,
         // as the autoreview skill checks on it then,
@@ -1843,7 +1887,7 @@ export const register: Register = on => {
   on('command.run', { command: 'reviewers' }, async $ => {
     await update($, closed, () => false)
     await $.ui.open({ id: PANE, title: TITLE, columns: COLUMNS })
-    return { text: 'Reviewers pane opened.' }
+    return { text: 'Autoreview Cockpit opened.' }
   })
 
   // Look at the review sessions right after a call of this session's own loop
@@ -2062,7 +2106,11 @@ export const register: Register = on => {
     const longest = Math.max(...snapshots.map(one => (one.repo ?? '?').length))
     const repoWidth = Math.max(4, Math.min(longest, room - 6))
     const branchWidth = Math.max(6, room - repoWidth)
-    const cut = (text: string, width: number) => (text.length > width ? `${text.slice(0, width - 1)}…` : text)
+    // By characters, as linesOf pads them, so that no cut splits a character of two UTF-16 units
+    const cut = (text: string, width: number) => {
+      const characters = Array.from(text)
+      return characters.length > width ? `${characters.slice(0, width - 1).join('')}…` : text
+    }
     const snapshotLines = linesOf(
       [
         ['repo', 'branch', 'snapshot', 'rw', 'behind'],

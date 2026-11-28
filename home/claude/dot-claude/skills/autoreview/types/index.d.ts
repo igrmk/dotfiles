@@ -44,7 +44,7 @@ export type Reviewer = {
   roundTokens?: Tokens
   // How full its context window is, as its last response reported it
   context?: Context
-  // When the user paused the review, taking its task, in milliseconds since the epoch,
+  // When a pause of the review took its task, in milliseconds since the epoch,
   // while the review stays paused and it is idle with no task out
   pausedAt?: number
 }
