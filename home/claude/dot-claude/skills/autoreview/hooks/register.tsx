@@ -15,7 +15,7 @@ const COLUMNS = 70
 // Change a tag when its value's fields change:
 // it declines what an earlier version stored, which outlives a reload.
 const board = atom({ plugin: 'reviewers', key: 'board' } as const, { reviewers: [], snapshots: [] } as Board, {
-  shape: 'board-28',
+  shape: 'board-29',
 })
 const closed = atom({ plugin: 'reviewers', key: 'closed' } as const, false, { shape: 'closed-1' })
 const usage = atom({ plugin: 'reviewers', key: 'usage' } as const, { at: 0, windows: [] } as Usage, {
@@ -82,9 +82,13 @@ const HEADING = /^### ([A-Z])\d+\./gm
 // A checkout line of the review file's header, one per repository, with the directory it enters,
 // also when reworded, as after a merge, and broken before its command
 const CHECKOUT = /^Check out what was reviewed\b.*?(?:\n.*?)??`cd ([^`]+?)(?: && [^`]*)?`/gm
-// The line of the review file's header that gives the share of the plan's weekly usage
-// at which the review pauses, per the autoreview skill
+// The lines of the review file's header that give the share of the plan's weekly usage
+// and of its 5-hour usage at which the review pauses, per the autoreview skill
 const WEEK_LIMIT = /^The review pauses at (\d{1,3})% of the week's usage\.$/m
+const FIVE_HOUR_LIMIT = /^The review pauses at (\d{1,3})% of the 5-hour window's usage\.$/m
+// The line that says the user has the review paused, and the one the 5-hour limit's pause writes
+const PAUSED = /^Paused(?: at the 5-hour limit)?\.$/m
+const PAUSED_AT_FIVE_HOURS = /^Paused at the 5-hour limit\.$/m
 
 // A row with a clock redraws every tick.
 // Polls come every few seconds while a review session is busy, else rarely,
@@ -812,7 +816,9 @@ export const register: Register = on => {
       attached: { name: string; sessionId?: string }[]
       findings: Record<string, number>
       isPaused: boolean
+      isPausedAtFiveHours: boolean
       weekLimit?: number
+      fiveHourLimit?: number
       repos: string[]
     }
     const files = new Map<string, Parsed>()
@@ -1045,8 +1051,10 @@ export const register: Register = on => {
             attached: [...header.matchAll(ATTACH)].map(([, name = '', sessionId]) => ({ name, sessionId })),
             findings,
             // As the autoreview skill writes it while the user has the review paused
-            isPaused: /^Paused\.$/m.test(header),
+            isPaused: PAUSED.test(header),
+            isPausedAtFiveHours: PAUSED_AT_FIVE_HOURS.test(header),
             weekLimit: Number(WEEK_LIMIT.exec(header)?.[1] ?? Number.NaN) || undefined,
+            fiveHourLimit: Number(FIVE_HOUR_LIMIT.exec(header)?.[1] ?? Number.NaN) || undefined,
             repos: [...header.matchAll(CHECKOUT)].map(([, dir = '']) => dir),
           }
           files.set(path, file)
@@ -1423,10 +1431,10 @@ export const register: Register = on => {
     // The review sessions blocked on their tasks that this session was told of, by session ID,
     // each with when to tell of it again, never but after a notice that did not enter
     const blockedTold = new Map<string, number>()
-    // Whether a notice of the weekly limit is on its way,
-    // and when one that did not enter goes again
-    let isLimitTelling = false
-    let limitRetryAt = 0
+    // The usage windows whose limit's notice is on its way,
+    // and when one that did not enter goes again, by window
+    const limitTelling = new Set<string>()
+    const limitRetryAt = new Map<string, number>()
     // Whether a poll of this load of the plugin has run
     let hasPolled = false
     // When the polls went on after a gap that means the machine slept
@@ -1676,44 +1684,60 @@ export const register: Register = on => {
           }),
         )
         // Writing the rows drops an error that an earlier poll noted.
-        const { isPaused, weekLimit } = file
-        const rowsNow = { reviewers, developer, snapshots, isPaused, weekLimit }
+        const { isPaused, weekLimit, fiveHourLimit } = file
+        const rowsNow = { reviewers, developer, snapshots, isPaused, weekLimit, fiveHourLimit }
         if (JSON.stringify(rowsNow) !== JSON.stringify(last)) await update($, board, () => rowsNow)
 
-        // Tell this session once the plan's weekly usage reaches the share the review file gives,
+        // Tell this session once a window of the plan's usage
+        // reaches the share the review file gives it,
         // as the autoreview skill pauses the review then, unless it is paused already:
-        // once per week and share, kept in the store by the review file for a reload,
+        // once per window, its reset and its share,
+        // kept in the store by the review file for a reload,
         // and for the session the conversation goes on in under a new ID,
-        // so that a resume the user asks for holds until the week starts anew or the share changes.
-        const week = windows.find(one => one.kind === 'seven_day')
-        const hasWeekReset = week?.resetsAt !== undefined && week.resetsAt <= now
-        if (
-          weekLimit !== undefined &&
-          week !== undefined &&
-          !hasWeekReset &&
-          !isPaused &&
-          week.percentUsed >= weekLimit &&
-          !isLimitTelling &&
-          now >= limitRetryAt
-        ) {
-          // By the hour the week resets, as readings may give it to the millisecond apart
-          const key = `${weekLimit}:${week.resetsAt === undefined ? '' : Math.round(week.resetsAt / 3600000)}`
-          const storeKey = `weekLimitTold:${file.path}`
-          if ((await $.store.get(storeKey).catch(() => undefined)) !== key) {
-            isLimitTelling = true
+        // so that a resume the user asks for holds
+        // until the window starts anew or the share changes.
+        // Once the 5-hour window whose limit paused the review starts anew,
+        // tell this session once to resume it, as the skill does while that pause stands.
+        // A notice that does not enter goes again RETRY_MS later.
+        // A window's reset is kept by the hour, as readings may give it to the millisecond apart.
+        const hourOf = (window: Usage['windows'][number]) =>
+          window.resetsAt === undefined ? '' : String(Math.round(window.resetsAt / 3600000))
+        const tell = (kind: string, text: string, storeKey: string, key: string) => {
+          limitTelling.add(kind)
+          void $.prompt
+            .submit({ text })
+            .then(async ran => {
+              if (ran.drop === undefined) await $.store.set(storeKey, key).catch(() => undefined)
+              else limitRetryAt.set(kind, now + RETRY_MS)
+            })
+            .catch(error => $.ui.log(`reviewers: ${String(error)}`, { to: 'debug' }))
+            .finally(() => limitTelling.delete(kind))
+        }
+        for (const { kind, limit, name } of [
+          { kind: 'five_hour', limit: fiveHourLimit, name: '5-hour' },
+          { kind: 'seven_day', limit: weekLimit, name: 'weekly' },
+        ]) {
+          const window = windows.find(one => one.kind === kind)
+          if (limit === undefined || window === undefined || limitTelling.has(kind)) continue
+          if (now < (limitRetryAt.get(kind) ?? 0)) continue
+          const hasReset = window.resetsAt !== undefined && window.resetsAt <= now
+          const toldKey = `${kind}LimitTold:${file.path}`
+          const told = await $.store.get(toldKey).catch(() => undefined)
+          if (!hasReset && !isPaused && window.percentUsed >= limit) {
+            const key = `${limit}:${hourOf(window)}`
+            if (told === key) continue
             const text =
-              `The plan's weekly usage is at ${Math.round(week.percentUsed)}%, ` +
-              `at the review's limit of ${weekLimit}%: pause the review, per the autoreview skill.`
-            void $.prompt
-              .submit({ text })
-              .then(async ran => {
-                if (ran.drop === undefined) await $.store.set(storeKey, key).catch(() => undefined)
-                else limitRetryAt = now + RETRY_MS
-              })
-              .catch(error => $.ui.log(`reviewers: ${String(error)}`, { to: 'debug' }))
-              .finally(() => {
-                isLimitTelling = false
-              })
+              `The plan's ${name} usage is at ${Math.round(window.percentUsed)}%, ` +
+              `at the review's ${name} limit of ${limit}%: pause the review, per the autoreview skill.`
+            tell(kind, text, toldKey, key)
+          } else if (kind === 'five_hour' && file.isPausedAtFiveHours && typeof told === 'string') {
+            const resumeKey = `${kind}ResumeTold:${file.path}`
+            const hasStartedAnew = hasReset || hourOf(window) !== told.split(':')[1]
+            if (!hasStartedAnew || (await $.store.get(resumeKey).catch(() => undefined)) === told) continue
+            const text =
+              'The 5-hour window whose limit paused the review has started anew: ' +
+              'resume the review, per the autoreview skill.'
+            tell(kind, text, resumeKey, told)
           }
         }
 
@@ -1875,7 +1899,12 @@ export const register: Register = on => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text } = $.ui.resolve(e)
     const now = await $.clock.now()
-    const { reviewers, developer, snapshots, error, isPaused, weekLimit } = await read($, board)
+    const { reviewers, developer, snapshots, error, isPaused, weekLimit, fiveHourLimit } = await read($, board)
+    // The shares of the windows at which the review pauses
+    const limits = [
+      ...(fiveHourLimit === undefined ? [] : [`5h ${fiveHourLimit}%`]),
+      ...(weekLimit === undefined ? [] : [`week ${weekLimit}%`]),
+    ]
     // A window that has reset since the reading shows as 0 percent, until a new reading.
     const windows = (await read($, usage)).windows
       .filter(one => WINDOWS[one.kind] !== undefined)
@@ -2070,7 +2099,7 @@ export const register: Register = on => {
         <Text> </Text>
         {windows.length > 0 && (
           <Text>
-            Usage: {[...windows, ...(weekLimit === undefined ? [] : [`pause at ${weekLimit}%`])].join(', ')}
+            Usage: {[...windows, ...(limits.length === 0 ? [] : [`pause at ${limits.join(', ')}`])].join(', ')}
           </Text>
         )}
         {windows.length > 0 && <Text> </Text>}

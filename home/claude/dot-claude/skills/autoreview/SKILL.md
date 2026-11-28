@@ -3,10 +3,10 @@ name: autoreview
 description: >-
   Run a review in the background: start review sessions that review snapshots of the work
   and send their findings here by message, fix them and send fix reports back,
-  pause, resume or end the review, and limit its weekly usage.
+  pause, resume or end the review, and limit its usage.
   Use when the user runs /autoreview or asks for a review session,
   and when findings arrive from a review session.
-argument-hint: "add [level] [model] [warm] [limit <N>] [target] | pause | resume | end | limit <N|off>"
+argument-hint: "add [level] [model] [warm] [limit [5h] <N>] [target] | pause | resume | end | limit [5h] <N|off>"
 ---
 
 # autoreview
@@ -94,18 +94,26 @@ The first argument names what to do, else it is `add`:
 - `resume` resumes it, as above.
 - `end` ends it, as above.
 - `limit <N>`, as `limit 80`, pauses the review once the plan's weekly usage reaches N percent,
-  and `limit off` drops that, per Weekly limit.
+  `limit 5h <N>` once its 5-hour usage does, and `limit off` and `limit 5h off` drop them,
+  per Usage limits.
 
-## Weekly limit
+## Usage limits
 
 `limit <N>` sets the share of the plan's weekly usage at which the review pauses,
-in place of any set before:
-keep it as the line "The review pauses at <N>% of the week's usage." in the review file's header,
-which the `reviewers` plugin reads, and take that line out on `limit off`.
-Once the week's usage reaches that share, the plugin sends this session a message,
-once per week and share:
-then pause the review, as `pause` does, and tell the user in the reply.
-A resume the user asks for then holds until the week starts anew or the share changes.
+and `limit 5h <N>` that of its 5-hour usage, each in place of any set before:
+keep them as the lines "The review pauses at <N>% of the week's usage."
+and "The review pauses at <N>% of the 5-hour window's usage." in the review file's header,
+which the `reviewers` plugin reads, and take a line out on `limit off` or `limit 5h off`.
+Once a window's usage reaches its share, the plugin sends this session a message,
+once per window and share: then pause the review, as `pause` does, and tell the user in the reply.
+For the 5-hour window, write "Paused at the 5-hour limit." in place of "Paused.",
+which counts as it everywhere, as that pause lifts by itself:
+once the window starts anew, the plugin sends this session another message,
+and then resume the review, as `resume` does, unless the file says "Paused." by then.
+`limit 5h off` during that pause resumes the review at once,
+and the weekly limit's message during it writes "Paused." in its place,
+as the weekly limit's pause waits for the user.
+A resume the user asks for holds until the window starts anew or the share changes.
 
 ## Arguments of `add`
 
@@ -120,7 +128,7 @@ Tell the arguments apart by their values:
   with a spoken name, such as `opus5.5`, turned into its ID, `claude-opus-5-5`;
 - `warm`, which starts the review session warm, on the last report sent to the others,
   instead of a `/code-review` of the whole target, as Start a review session says;
-- `limit <N>`, as `limit 85`, which sets the weekly limit as the `limit` verb does;
+- `limit <N>` or `limit 5h <N>`, as `limit 85`, which sets a limit as the `limit` verb does;
 - anything else is the target,
   else the range from `git merge-base <remote>/HEAD <commit>` to the snapshot,
   with `<remote>` the remote whose range holds the fewest commits, of those with a `HEAD`,

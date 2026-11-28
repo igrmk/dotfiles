@@ -100,11 +100,12 @@ export type Board = {
   reviewers: Reviewer[]
   developer?: Developer
   snapshots: Snapshot[]
-  // Whether the review file says the user has the review paused
+  // Whether the review file says the user has the review paused, or a 5-hour limit has
   isPaused?: boolean
-  // The share of the plan's weekly usage at which the review pauses, in percent,
-  // as the review file gives it
+  // The shares of the plan's weekly and 5-hour usage at which the review pauses, in percent,
+  // as the review file gives them
   weekLimit?: number
+  fiveHourLimit?: number
   // A failure of the pane's own that keeps the rows from being current,
   // such as `claude agents` failing, and when it began, in milliseconds since the epoch
   error?: { text: string; since: number }
