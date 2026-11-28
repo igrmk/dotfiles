@@ -46,9 +46,8 @@
   Skip this when the `todo` skill would do nothing else.
 - Keep a commit subject under 70 characters; make it longer only when it cannot be said in 70.
 - Fold a change that belongs in an unpushed commit into it with `git commit --fixup` and autosquash,
-  never a follow-up commit,
-  but first check with `git status` that the commit is still unpushed, as the user may have pushed it;
-  the same goes for an amend or a squash.
+  never a follow-up commit, but first check with `git status` that the commit is still unpushed,
+  as the user may have pushed it; the same goes for an amend or a squash.
 - Write plain-text prose docs and code comments per the `reflow` skill.
 - In `--` comments, mark list items with `*`, not `-`.
 - Describe in a comment or doc what the thing is and does for good,
